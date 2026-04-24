@@ -1,0 +1,25 @@
+{
+    "name": "cinar/bitrix-blocksee-aiseo",
+    "description": "БЛОКСИ: ИИ SEO — модуль 1С-Битрикс для ИИ-генерации описаний товаров и отзывов.",
+    "type": "bitrix-d7-module",
+    "keywords": ["bitrix", "1c-bitrix", "ai", "seo", "descriptions", "reviews", "blocksee"],
+    "homepage": "https://github.com/novalidesignl-ship-it/bitrix-blocksee-aiseo",
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "Cinar",
+            "homepage": "https://cinar.ru"
+        }
+    ],
+    "require": {
+        "php": ">=8.1"
+    },
+    "support": {
+        "source": "https://github.com/novalidesignl-ship-it/bitrix-blocksee-aiseo",
+        "issues": "https://github.com/novalidesignl-ship-it/bitrix-blocksee-aiseo/issues"
+    },
+    "extra": {
+        "bitrix-module-id": "blocksee.aiseo",
+        "install-path": "local/modules/blocksee.aiseo"
+    }
+}

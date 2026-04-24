@@ -1,0 +1,24 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Local dev artifacts
+*.log
+*.bak
+*.swp
+*.tmp
+
+# Composer (we don't ship vendor with the module)
+/vendor/
+composer.lock
+
+# PHPUnit / coverage
+.phpunit.result.cache
+/tests/_output/
+/coverage/
