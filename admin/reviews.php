@@ -135,8 +135,20 @@ function bsee_stars(int $rating): string
     <div class="bsee-header-bar">
         <div class="bsee-header-info">
             <div class="bsee-header-target">
-                <span class="bsee-label">Форум отзывов:</span>
-                <b>ID <?= (int)$forumId ?></b>
+                <span class="bsee-label">Источник отзывов:</span>
+                <?php
+                    $src = Options::resolveReviewsSource();
+                    if ($src === Options::REVIEWS_SOURCE_BLOG) {
+                        $blogId = Options::getReviewsBlogId();
+                        echo '<b>Блог «' . htmlspecialcharsbx(Options::getReviewsBlogUrl()) . '»'
+                           . ($blogId > 0 ? ' · ID ' . $blogId : '') . '</b>';
+                    } elseif ($src === Options::REVIEWS_SOURCE_FORUM) {
+                        $forumId = Options::getReviewsForumId();
+                        echo '<b>Форум' . ($forumId > 0 ? ' ID ' . $forumId : ' (не задан)') . '</b>';
+                    } else {
+                        echo '<b style="color:#dc2626;">не настроен</b>';
+                    }
+                ?>
             </div>
             <a href="blocksee_aiseo_options.php?lang=<?= LANGUAGE_ID ?>" class="bsee-btn bsee-btn-ghost">Настройки модуля</a>
             <a href="blocksee_aiseo_list.php?lang=<?= LANGUAGE_ID ?>" class="bsee-btn bsee-btn-ghost">К описаниям</a>
