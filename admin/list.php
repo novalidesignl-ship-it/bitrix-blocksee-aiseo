@@ -28,6 +28,14 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_ad
 
 $catalogIblocks = Options::getCatalogIblocks();
 
+$iblockTypeMap = [];
+if (!empty($catalogIblocks)) {
+    $rsT = \CIBlock::GetList([], ['ID' => array_keys($catalogIblocks)]);
+    while ($t = $rsT->Fetch()) {
+        $iblockTypeMap[(int)$t['ID']] = (string)$t['IBLOCK_TYPE_ID'];
+    }
+}
+
 $selectedIblockId = (int)($_REQUEST['IBLOCK_ID'] ?? Options::getIblockId());
 if ($selectedIblockId === 0 && !empty($catalogIblocks)) {
     $selectedIblockId = (int)array_key_first($catalogIblocks);
@@ -229,7 +237,8 @@ function bsee_get_sections(int $elementId): string
                     || trim(strip_tags((string)$item['PREVIEW_TEXT'])) !== '';
                 if ($scenarioFilter === 'empty_only' && $hasDescription) continue;
                 $elementId = (int)$item['ID'];
-                $editUrl = Options::buildElementEditUrl((int)$item['IBLOCK_ID'], $elementId, LANGUAGE_ID);
+                $iblockTypeId = $iblockTypeMap[(int)$item['IBLOCK_ID']] ?? 'catalog';
+                $editUrl = "/bitrix/admin/iblock_element_edit.php?IBLOCK_ID={$item['IBLOCK_ID']}&type=" . urlencode($iblockTypeId) . "&ID={$elementId}&lang=" . LANGUAGE_ID;
                 $thumb = bsee_img_src((int)($item['PREVIEW_PICTURE'] ?: $item['DETAIL_PICTURE']));
                 $price = $hasCatalog ? (float)($item['CATALOG_PRICE_1'] ?? 0) : 0;
                 $currency = (string)($item['CATALOG_CURRENCY_1'] ?? 'RUB');

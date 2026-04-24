@@ -129,10 +129,6 @@ class Reviews extends Controller
             $this->addError(new Error('Модуль iblock недоступен'));
             return null;
         }
-        if (!Loader::includeModule('forum')) {
-            $this->addError(new Error('Модуль forum недоступен'));
-            return null;
-        }
         if ($iblockId <= 0) {
             $iblockId = Options::getIblockId();
         }
@@ -153,17 +149,10 @@ class Reviews extends Controller
             $baseFilter['INCLUDE_SUBSECTIONS'] = 'Y';
         }
 
-        $forumId = Options::getReviewsForumId();
         $productsWithReviews = [];
-        if ($forumId > 0 && $scenario === 'skip_with_reviews') {
-            $conn = \Bitrix\Main\Application::getConnection();
-            $rs = $conn->query("SELECT XML_ID, POSTS FROM b_forum_topic WHERE FORUM_ID = " . (int)$forumId
-                . " AND XML_ID LIKE 'iblock_" . (int)$iblockId . "_%' AND POSTS > 0");
-            while ($t = $rs->fetch()) {
-                if (preg_match('/^iblock_\d+_(\d+)$/', $t['XML_ID'], $m)) {
-                    $productsWithReviews[(int)$m[1]] = (int)$t['POSTS'];
-                }
-            }
+        if ($scenario === 'skip_with_reviews') {
+            $gen = new ReviewsGenerator();
+            $productsWithReviews = $gen->findElementsWithReviews($iblockId);
         }
 
         $totalCount = null;

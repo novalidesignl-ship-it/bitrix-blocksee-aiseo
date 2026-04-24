@@ -8,6 +8,11 @@ class Options
 {
     public const MODULE_ID = 'blocksee.aiseo';
 
+    public const REVIEWS_SOURCE_AUTO = 'auto';
+    public const REVIEWS_SOURCE_FORUM = 'forum';
+    public const REVIEWS_SOURCE_BLOG = 'blog';
+    public const REVIEWS_BLOG_URL_DEFAULT = 'catalog_comments';
+
     public static function get(string $key, $default = '')
     {
         return Option::get(self::MODULE_ID, $key, $default);
@@ -20,17 +25,8 @@ class Options
 
     public static function getApiEndpoint(): string
     {
-        $endpoint = trim((string)self::get('api_endpoint', ''));
-        return $endpoint !== '' ? $endpoint : self::defaultEndpoint();
-    }
-
-    /**
-     * Default vendor endpoint is kept base64-encoded to avoid casual disclosure
-     * when source trees are scanned or shared.
-     */
-    private static function defaultEndpoint(): string
-    {
-        return base64_decode('aHR0cHM6Ly9say5ibG9ja3NlZS5ydS9hcGkucGhw');
+        $endpoint = trim((string)self::get('api_endpoint', 'https://lk.blocksee.ru/api.php'));
+        return $endpoint !== '' ? $endpoint : 'https://lk.blocksee.ru/api.php';
     }
 
     public static function getTargetField(): string
@@ -105,101 +101,100 @@ class Options
     }
 
     /**
-     * Find catalog-like infoblocks across stock Bitrix, Aspro (Premier, Next,
-     * Allcorp, Maximum, Priority…) and any custom themes. Returns an ordered
-     * associative array: [IBLOCK_ID => "Name [ID]"].
-     *
-     * Resolution order (first non-empty wins):
-     *   1. Infoblocks registered in `b_catalog_iblock` (catalog module) —
-     *      the authoritative source for storefront catalogs.
-     *   2. Infoblocks with `TYPE = 'catalog'` — stock Bitrix convention.
-     *   3. Infoblocks whose TYPE contains "catalog" (case-insensitive) —
-     *      matches Aspro solutions and custom naming.
-     *   4. Any active infoblock — last-resort fallback.
+     * Список инфоблоков-каталогов из модуля catalog (без SKU).
+     * Фолбек: все активные инфоблоки, если catalog недоступен или каталоги не зарегистрированы.
+     * @return array<int, string> [IBLOCK_ID => "Название [ID]"]
      */
     public static function getCatalogIblocks(): array
     {
-        if (!\Bitrix\Main\Loader::includeModule('iblock')) {
-            return [];
-        }
-
-        $out = [];
-
-        // Step 1 — registered catalog iblocks
-        if (\Bitrix\Main\Loader::includeModule('catalog') && class_exists('\Bitrix\Catalog\CatalogIblockTable')) {
-            try {
-                $ids = [];
-                $rs = \Bitrix\Catalog\CatalogIblockTable::getList(['select' => ['IBLOCK_ID']]);
+        $iblocks = [];
+        if (\Bitrix\Main\Loader::includeModule('iblock')) {
+            $ids = [];
+            if (\Bitrix\Main\Loader::includeModule('catalog')) {
+                $rs = \Bitrix\Catalog\CatalogIblockTable::getList([
+                    'select' => ['IBLOCK_ID'],
+                    'filter' => ['=PRODUCT_IBLOCK_ID' => 0],
+                ]);
                 while ($r = $rs->fetch()) {
-                    $ids[(int)$r['IBLOCK_ID']] = true;
+                    $ids[] = (int)$r['IBLOCK_ID'];
                 }
-                if ($ids) {
-                    $rsIb = \CIBlock::GetList(['SORT' => 'ASC'], ['ID' => array_keys($ids), 'ACTIVE' => 'Y']);
-                    while ($ib = $rsIb->Fetch()) {
-                        $out[(int)$ib['ID']] = $ib['NAME'] . ' [' . $ib['ID'] . ']';
-                    }
-                }
-            } catch (\Throwable $t) {
-                // fall through to next resolver
+            }
+            $filter = ['ACTIVE' => 'Y'];
+            if ($ids) {
+                $filter['ID'] = $ids;
+            }
+            $rsIb = \CIBlock::GetList(['SORT' => 'ASC'], $filter);
+            while ($ib = $rsIb->Fetch()) {
+                $iblocks[(int)$ib['ID']] = $ib['NAME'] . ' [' . $ib['ID'] . ']';
             }
         }
-        if ($out) return $out;
-
-        // Step 2 — stock TYPE=catalog
-        $rs = \CIBlock::GetList(['SORT' => 'ASC'], ['TYPE' => 'catalog', 'ACTIVE' => 'Y']);
-        while ($ib = $rs->Fetch()) {
-            $out[(int)$ib['ID']] = $ib['NAME'] . ' [' . $ib['ID'] . ']';
-        }
-        if ($out) return $out;
-
-        // Step 3 — TYPE contains "catalog" (Aspro, Intec, Sotbit, custom…)
-        $rs = \CIBlock::GetList(['SORT' => 'ASC'], ['ACTIVE' => 'Y']);
-        while ($ib = $rs->Fetch()) {
-            $type = mb_strtolower((string)$ib['IBLOCK_TYPE_ID']);
-            if ($type !== '' && (
-                $type === 'catalog'
-                || mb_strpos($type, 'catalog') !== false
-                || mb_strpos($type, 'каталог') !== false
-                || in_array($type, ['shop', 'store', 'goods', 'products', 'eshop'], true)
-            )) {
-                $out[(int)$ib['ID']] = $ib['NAME'] . ' [' . $ib['ID'] . '] · ' . $ib['IBLOCK_TYPE_ID'];
-            }
-        }
-        if ($out) return $out;
-
-        // Step 4 — any active infoblock (last-resort so admin sees something)
-        $rs = \CIBlock::GetList(['SORT' => 'ASC'], ['ACTIVE' => 'Y']);
-        while ($ib = $rs->Fetch()) {
-            $out[(int)$ib['ID']] = $ib['NAME'] . ' [' . $ib['ID'] . '] · ' . $ib['IBLOCK_TYPE_ID'];
-        }
-        return $out;
+        return $iblocks;
     }
 
-    /**
-     * Resolve IBLOCK_TYPE_ID for a given iblock (cached statically per request).
-     * Needed to build correct links to /bitrix/admin/iblock_element_edit.php on
-     * solutions with non-standard types (Aspro Premier/Next/Allcorp, Intec, etc.).
-     */
+    /** @return int[] */
+    public static function getCatalogIblockIds(): array
+    {
+        return array_keys(self::getCatalogIblocks());
+    }
+
     public static function getIblockTypeId(int $iblockId): string
     {
         static $cache = [];
-        if ($iblockId <= 0) return 'catalog';
-        if (array_key_exists($iblockId, $cache)) return $cache[$iblockId];
-        if (!\Bitrix\Main\Loader::includeModule('iblock')) {
-            return $cache[$iblockId] = 'catalog';
+        if (!isset($cache[$iblockId])) {
+            $cache[$iblockId] = '';
+            if (\Bitrix\Main\Loader::includeModule('iblock')) {
+                $row = \CIBlock::GetByID($iblockId)->Fetch();
+                if ($row) {
+                    $cache[$iblockId] = (string)$row['IBLOCK_TYPE_ID'];
+                }
+            }
         }
-        $row = \CIBlock::GetByID($iblockId)->Fetch();
-        return $cache[$iblockId] = ($row && !empty($row['IBLOCK_TYPE_ID']))
-            ? (string)$row['IBLOCK_TYPE_ID']
-            : 'catalog';
+        return $cache[$iblockId];
+    }
+
+    public static function getReviewsSource(): string
+    {
+        $val = (string)self::get('reviews_source', self::REVIEWS_SOURCE_AUTO);
+        return in_array($val, [self::REVIEWS_SOURCE_FORUM, self::REVIEWS_SOURCE_BLOG], true)
+            ? $val
+            : self::REVIEWS_SOURCE_AUTO;
+    }
+
+    public static function getReviewsBlogUrl(): string
+    {
+        $url = trim((string)self::get('reviews_blog_url', self::REVIEWS_BLOG_URL_DEFAULT));
+        return $url !== '' ? $url : self::REVIEWS_BLOG_URL_DEFAULT;
+    }
+
+    public static function getReviewsBlogId(): int
+    {
+        return (int)self::get('reviews_blog_id', 0);
     }
 
     /**
-     * Build a link to the iblock element edit page in admin, with correct type= param.
+     * Возвращает реально используемый источник: 'forum' | 'blog' | '' (нет).
+     * Если выбран auto: blog при наличии блога (или модуля blog), иначе forum.
      */
-    public static function buildElementEditUrl(int $iblockId, int $elementId, string $lang = 'ru'): string
+    public static function resolveReviewsSource(): string
     {
-        $type = rawurlencode(self::getIblockTypeId($iblockId));
-        return "/bitrix/admin/iblock_element_edit.php?IBLOCK_ID={$iblockId}&type={$type}&ID={$elementId}&lang={$lang}";
+        $configured = self::getReviewsSource();
+        if ($configured === self::REVIEWS_SOURCE_FORUM) {
+            return \Bitrix\Main\ModuleManager::isModuleInstalled('forum')
+                ? self::REVIEWS_SOURCE_FORUM
+                : '';
+        }
+        if ($configured === self::REVIEWS_SOURCE_BLOG) {
+            return \Bitrix\Main\ModuleManager::isModuleInstalled('blog')
+                ? self::REVIEWS_SOURCE_BLOG
+                : '';
+        }
+        // auto
+        if (\Bitrix\Main\ModuleManager::isModuleInstalled('blog')) {
+            return self::REVIEWS_SOURCE_BLOG;
+        }
+        if (\Bitrix\Main\ModuleManager::isModuleInstalled('forum')) {
+            return self::REVIEWS_SOURCE_FORUM;
+        }
+        return '';
     }
 }

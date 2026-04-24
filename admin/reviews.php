@@ -19,8 +19,9 @@ if (!Loader::includeModule('blocksee.aiseo')) {
     return;
 }
 
-if (!Loader::includeModule('forum')) {
-    ShowError('Для работы с отзывами требуется модуль forum');
+$reviewsBackend = \Blocksee\Aiseo\Reviews\Factory::create();
+if ($reviewsBackend === null) {
+    ShowError('Источник отзывов не настроен. Установите модуль blog (для Aspro/каталог-комментариев) или forum, либо задайте источник в настройках модуля.');
     require $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/epilog_admin.php';
     return;
 }
@@ -33,6 +34,14 @@ $APPLICATION->SetTitle('БЛОКСИ: ИИ SEO — Отзывы товаров')
 require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_after.php';
 
 $catalogIblocks = Options::getCatalogIblocks();
+
+$iblockTypeMap = [];
+if (!empty($catalogIblocks)) {
+    $rsT = \CIBlock::GetList([], ['ID' => array_keys($catalogIblocks)]);
+    while ($t = $rsT->Fetch()) {
+        $iblockTypeMap[(int)$t['ID']] = (string)$t['IBLOCK_TYPE_ID'];
+    }
+}
 
 $selectedIblockId = (int)($_REQUEST['IBLOCK_ID'] ?? Options::getIblockId());
 if ($selectedIblockId === 0 && !empty($catalogIblocks)) {
@@ -71,23 +80,11 @@ while ($row = $rs->Fetch()) {
 $totalCount = (int)$rs->SelectedRowsCount();
 $pageCount = max(1, (int)ceil($totalCount / $pageSize));
 
-// Review counts per product on current page (via raw SQL — forum GetList doesn't accept XML_ID array/LIKE)
-$forumId = Options::getReviewsForumId();
+// Review counts per product on current page — через backend (forum или blog).
 $reviewCounts = [];
-if ($forumId > 0 && !empty($items)) {
+if (!empty($items)) {
     $ids = array_map('intval', array_column($items, 'ID'));
-    $placeholders = [];
-    foreach ($ids as $id) {
-        $placeholders[] = "'iblock_" . (int)$selectedIblockId . "_" . (int)$id . "'";
-    }
-    $inList = implode(',', $placeholders);
-    $conn = \Bitrix\Main\Application::getConnection();
-    $rs = $conn->query("SELECT XML_ID, POSTS FROM b_forum_topic WHERE FORUM_ID = " . (int)$forumId . " AND XML_ID IN ($inList)");
-    while ($t = $rs->fetch()) {
-        if (preg_match('/^iblock_\d+_(\d+)$/', $t['XML_ID'], $m)) {
-            $reviewCounts[(int)$m[1]] = (int)$t['POSTS'];
-        }
-    }
+    $reviewCounts = $reviewsBackend->countsForElements($ids, $selectedIblockId);
 }
 if ($scenarioFilter === 'without_reviews') {
     $items = array_values(array_filter($items, fn($r) => ($reviewCounts[(int)$r['ID']] ?? 0) === 0));
@@ -243,7 +240,8 @@ function bsee_stars(int $rating): string
             <?php foreach ($items as $item):
                 $elementId = (int)$item['ID'];
                 $cnt = (int)($reviewCounts[$elementId] ?? 0);
-                $editUrl = Options::buildElementEditUrl((int)$item['IBLOCK_ID'], $elementId, LANGUAGE_ID);
+                $iblockTypeId = $iblockTypeMap[(int)$item['IBLOCK_ID']] ?? 'catalog';
+                $editUrl = "/bitrix/admin/iblock_element_edit.php?IBLOCK_ID={$item['IBLOCK_ID']}&type=" . urlencode($iblockTypeId) . "&ID={$elementId}&lang=" . LANGUAGE_ID;
                 $thumb = bsee_img_src_rev((int)($item['PREVIEW_PICTURE'] ?: $item['DETAIL_PICTURE']));
             ?>
                 <tr data-element-id="<?= $elementId ?>">

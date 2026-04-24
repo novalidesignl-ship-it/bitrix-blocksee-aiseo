@@ -35,6 +35,7 @@ class blocksee_aiseo extends CModule
         $this->installFiles();
         $this->installDefaultOptions();
         $this->ensureReviewsForum();
+        $this->ensureReviewsBlog();
 
         $APPLICATION->IncludeAdminFile(
             Loc::getMessage('BLOCKSEE_AISEO_INSTALL_TITLE'),
@@ -82,9 +83,7 @@ class blocksee_aiseo extends CModule
     public function installDefaultOptions()
     {
         $defaults = [
-            // API endpoint is kept blank — Options::getApiEndpoint() falls back to the
-            // base64-encoded vendor default when the stored value is empty.
-            'api_endpoint' => '',
+            'api_endpoint' => 'https://lk.blocksee.ru/api.php',
             'target_field' => 'DETAIL_TEXT',
             'target_property_code' => '',
             'iblock_id' => '',
@@ -92,6 +91,9 @@ class blocksee_aiseo extends CModule
             'temperature' => '0.7',
             'max_tokens' => '3000',
             'creative_mode' => 'N',
+            'reviews_source' => 'auto',
+            'reviews_blog_url' => 'catalog_comments',
+            'reviews_blog_id' => '',
             'reviews_forum_id' => '',
             'reviews_per_product' => '3',
             'reviews_min_words' => '20',
@@ -234,5 +236,23 @@ class blocksee_aiseo extends CModule
                 'LIST_FILTER_LABEL' => ['ru' => 'AI', 'en' => 'AI'],
             ]);
         }
+    }
+
+    /**
+     * Лениво создаёт блог `catalog_comments` (для шаблонов с bitrix:catalog.comments + BLOG_USE=Y,
+     * как Aspro Premier) и регистрирует UF-поля комментария, чтобы AI-генерируемые отзывы
+     * сразу подхватывались штатным шаблоном.
+     */
+    public function ensureReviewsBlog()
+    {
+        if (!ModuleManager::isModuleInstalled('blog')) {
+            return;
+        }
+        if (!Loader::includeModule('blog') || !Loader::includeModule('blocksee.aiseo')) {
+            return;
+        }
+        // setupForIblock(0) создаёт сам блог и UF-поля комментария, без свойств инфоблока.
+        $backend = new \Blocksee\Aiseo\Reviews\BlogBackend();
+        $backend->setupForIblock(0);
     }
 }

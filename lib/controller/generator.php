@@ -103,7 +103,10 @@ class Generator extends Controller
         if ($iblockId > 0) {
             $filter['IBLOCK_ID'] = $iblockId;
         } else {
-            $filter['IBLOCK_TYPE'] = 'catalog';
+            $ids = Options::getCatalogIblockIds();
+            if ($ids) {
+                $filter['IBLOCK_ID'] = $ids;
+            }
         }
         if ($search !== '') {
             $filter['NAME'] = '%' . $search . '%';
@@ -133,7 +136,7 @@ class Generator extends Controller
                 'iblock_id' => (int)$row['IBLOCK_ID'],
                 'has_description' => $hasDesc,
                 'current_description' => (string)($row['DETAIL_TEXT'] ?: $row['PREVIEW_TEXT']),
-                'edit_url' => Options::buildElementEditUrl((int)$row['IBLOCK_ID'], (int)$row['ID']),
+                'edit_url' => "/bitrix/admin/iblock_element_edit.php?IBLOCK_ID={$row['IBLOCK_ID']}&type=" . urlencode(Options::getIblockTypeId((int)$row['IBLOCK_ID']) ?: 'catalog') . "&ID={$row['ID']}&lang=ru",
             ];
         }
 

@@ -36,6 +36,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_bitrix_sessid()) {
         Options::set('creative_mode', isset($_POST['creative_mode']) ? 'Y' : 'N');
 
         // Reviews section
+        $newSource = (string)($_POST['reviews_source'] ?? Options::REVIEWS_SOURCE_AUTO);
+        if (!in_array($newSource, [Options::REVIEWS_SOURCE_AUTO, Options::REVIEWS_SOURCE_FORUM, Options::REVIEWS_SOURCE_BLOG], true)) {
+            $newSource = Options::REVIEWS_SOURCE_AUTO;
+        }
+        Options::set('reviews_source', $newSource);
+        Options::set('reviews_blog_url', trim((string)($_POST['reviews_blog_url'] ?? 'catalog_comments')) ?: 'catalog_comments');
         Options::set('reviews_forum_id', (int)($_POST['reviews_forum_id'] ?? 0));
         Options::set('reviews_per_product', max(1, min(50, (int)($_POST['reviews_per_product'] ?? 3))));
         Options::set('reviews_min_words', max(10, (int)($_POST['reviews_min_words'] ?? 20)));
@@ -62,6 +68,12 @@ $customPrompt = Options::getCustomPrompt();
 $settings = Options::getGenerationSettings();
 
 // Reviews state
+$reviewsSource = Options::getReviewsSource();
+$reviewsResolved = Options::resolveReviewsSource();
+$reviewsBlogUrl = Options::getReviewsBlogUrl();
+$reviewsBlogId = Options::getReviewsBlogId();
+$blogModuleAvailable = \Bitrix\Main\ModuleManager::isModuleInstalled('blog');
+$forumModuleAvailable = \Bitrix\Main\ModuleManager::isModuleInstalled('forum');
 $reviewsForumId = Options::getReviewsForumId();
 $reviewsPerProduct = Options::getReviewsPerProduct();
 $reviewsSettings = Options::getReviewsSettings();
@@ -70,7 +82,7 @@ $reviewsDateRangeEnabled = Options::getReviewsDateRangeEnabled();
 $reviewsDateFrom = Options::getReviewsDateFrom();
 $reviewsDateTo = Options::getReviewsDateTo();
 
-// Catalog iblocks dropdown (stock Bitrix + Aspro Premier/Next/Allcorp/custom)
+// Catalog iblocks dropdown
 $catalogIblocks = Options::getCatalogIblocks();
 
 // Forums dropdown (if forum module present)
@@ -111,7 +123,10 @@ $APPLICATION->SetAdditionalCSS('/local/modules/blocksee.aiseo/assets/admin.css')
             <fieldset>
                 <legend>API</legend>
                 <p>
-                    <small>Соединение с AI-сервисом настраивается автоматически. Проверьте, что ваш домен добавлен в белый список у вендора.</small>
+                    <label>Endpoint URL:<br>
+                        <input type="text" name="api_endpoint" value="<?= htmlspecialcharsbx($endpoint) ?>" size="60">
+                    </label>
+                    <br><small>По умолчанию: https://lk.blocksee.ru/api.php</small>
                 </p>
                 <p>
                     <button type="submit" name="test_api" value="1" class="adm-btn">Проверить соединение</button>
@@ -150,15 +165,44 @@ $APPLICATION->SetAdditionalCSS('/local/modules/blocksee.aiseo/assets/admin.css')
             <fieldset>
                 <legend>Отзывы к товарам</legend>
                 <p>
-                    <label>Форум для отзывов:<br>
-                        <select name="reviews_forum_id">
+                    <label>Источник хранения отзывов:<br>
+                        <select name="reviews_source">
+                            <option value="<?= Options::REVIEWS_SOURCE_AUTO ?>" <?= $reviewsSource === Options::REVIEWS_SOURCE_AUTO ? 'selected' : '' ?>>
+                                Автоматически (рекомендуется)<?php if ($reviewsResolved): ?> — сейчас: <?= htmlspecialcharsbx($reviewsResolved) ?><?php endif; ?>
+                            </option>
+                            <option value="<?= Options::REVIEWS_SOURCE_BLOG ?>" <?= $reviewsSource === Options::REVIEWS_SOURCE_BLOG ? 'selected' : '' ?> <?= !$blogModuleAvailable ? 'disabled' : '' ?>>
+                                Blog — комментарии (Aspro Premier и совместимые)<?= !$blogModuleAvailable ? ' — модуль blog не установлен' : '' ?>
+                            </option>
+                            <option value="<?= Options::REVIEWS_SOURCE_FORUM ?>" <?= $reviewsSource === Options::REVIEWS_SOURCE_FORUM ? 'selected' : '' ?> <?= !$forumModuleAvailable ? 'disabled' : '' ?>>
+                                Forum — топики (стандарт Битрикса)<?= !$forumModuleAvailable ? ' — модуль forum не установлен' : '' ?>
+                            </option>
+                        </select>
+                    </label>
+                    <br><small>
+                        Auto: предпочитаем blog (как у Aspro), форум — как fallback.
+                        Если на сайте используется компонент <code>bitrix:catalog.comments</code> с <code>BLOG_USE='Y'</code> — выбирайте blog.
+                    </small>
+                </p>
+                <p>
+                    <label>URL блога-контейнера (для режима blog):<br>
+                        <input type="text" name="reviews_blog_url" value="<?= htmlspecialcharsbx($reviewsBlogUrl) ?>" size="40" placeholder="catalog_comments">
+                    </label>
+                    <br><small>
+                        Должно совпадать с параметром BLOG_URL компонента <code>catalog.comments</code>.
+                        В Aspro Premier по умолчанию — <code>catalog_comments</code>.
+                        <?php if ($reviewsBlogId > 0): ?>Текущий ID блога: <b><?= $reviewsBlogId ?></b>.<?php endif; ?>
+                    </small>
+                </p>
+                <p>
+                    <label>Форум для отзывов (для режима forum):<br>
+                        <select name="reviews_forum_id" <?= !$forumModuleAvailable ? 'disabled' : '' ?>>
                             <option value="0">(не выбран)</option>
                             <?php foreach ($forums as $fid => $fname): ?>
                                 <option value="<?= $fid ?>" <?= $fid === $reviewsForumId ? 'selected' : '' ?>><?= htmlspecialcharsbx($fname) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </label>
-                    <br><small>Модуль автоматически создаёт форум «Отзывы товаров (AI)» при установке. Можно переопределить.</small>
+                    <br><small>Модуль создаёт форум «Отзывы товаров (AI)» при установке (если установлен модуль forum).</small>
                 </p>
                 <p>
                     <label>Количество отзывов на товар по умолчанию:<br>
