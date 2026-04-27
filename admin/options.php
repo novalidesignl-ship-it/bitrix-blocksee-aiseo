@@ -264,7 +264,7 @@ $APPLICATION->SetAdditionalCSS('/local/modules/blocksee.aiseo/assets/admin.css')
                         <input type="radio" name="quality_tier" value="high" <?= $qualityTier === 'high' ? 'checked' : '' ?>>
                         Высокое качество (медленнее)
                     </label>
-                    <br><small>Высокое качество переключает API на более продвинутую модель (например Claude Sonnet). Поддержка зависит от вашего API-аккаунта.</small>
+                    <br><small>Высокое качество даёт более естественный и проработанный текст, но генерация занимает больше времени.</small>
                 </p>
                 <p>
                     <label>Temperature (0.0–2.0):<br>
