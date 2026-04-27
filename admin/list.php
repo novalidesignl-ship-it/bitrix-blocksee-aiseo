@@ -59,6 +59,27 @@ if ($selectedSectionId > 0) {
     $filter['INCLUDE_SUBSECTIONS'] = 'Y';
 }
 
+// Сценарий «empty_only» — ограничиваем выборку списком ID товаров,
+// у которых ОБА поля DETAIL_TEXT и PREVIEW_TEXT строго пустые/NULL.
+// Без этой явной фильтрации пагинация показывает только случайных пустых,
+// попавших в текущую страницу (ровно столько, сколько их оказалось среди 25
+// первых по NAME ASC) — баг, на который пожаловался пользователь.
+if ($scenarioFilter === 'empty_only' && $selectedIblockId > 0) {
+    $emptyIds = [];
+    $conn = \Bitrix\Main\Application::getConnection();
+    $sqlEmpty = "SELECT ID FROM b_iblock_element WHERE IBLOCK_ID = " . (int)$selectedIblockId
+        . " AND ACTIVE='Y'"
+        . " AND (DETAIL_TEXT IS NULL OR DETAIL_TEXT = '')"
+        . " AND (PREVIEW_TEXT IS NULL OR PREVIEW_TEXT = '')";
+    $rsEmpty = $conn->query($sqlEmpty);
+    while ($r = $rsEmpty->fetch()) {
+        $emptyIds[] = (int)$r['ID'];
+    }
+    // Пустой результат: подставляем -1, чтобы CIBlockElement::GetList вернул 0 строк
+    // (с пустым массивом он бы проигнорировал условие и вернул всё).
+    $filter['ID'] = $emptyIds ?: [-1];
+}
+
 $rs = \CIBlockElement::GetList(
     ['NAME' => 'ASC'],
     $filter,
@@ -235,7 +256,6 @@ function bsee_get_sections(int $elementId): string
             <?php foreach ($items as $item):
                 $hasDescription = trim(strip_tags((string)$item['DETAIL_TEXT'])) !== ''
                     || trim(strip_tags((string)$item['PREVIEW_TEXT'])) !== '';
-                if ($scenarioFilter === 'empty_only' && $hasDescription) continue;
                 $elementId = (int)$item['ID'];
                 $iblockTypeId = $iblockTypeMap[(int)$item['IBLOCK_ID']] ?? 'catalog';
                 $editUrl = "/bitrix/admin/iblock_element_edit.php?IBLOCK_ID={$item['IBLOCK_ID']}&type=" . urlencode($iblockTypeId) . "&ID={$elementId}&lang=" . LANGUAGE_ID;
