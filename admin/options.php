@@ -26,7 +26,7 @@ $testResult = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_bitrix_sessid()) {
     if (isset($_POST['save'])) {
-        Options::set('api_endpoint', trim((string)($_POST['api_endpoint'] ?? '')));
+        // api_endpoint больше не редактируется через UI; оставляем что было.
         Options::set('target_field', (string)($_POST['target_field'] ?? 'DETAIL_TEXT'));
         Options::set('target_property_code', trim((string)($_POST['target_property_code'] ?? '')));
         Options::set('iblock_id', (int)($_POST['iblock_id'] ?? 0));
@@ -123,10 +123,7 @@ $APPLICATION->SetAdditionalCSS('/local/modules/blocksee.aiseo/assets/admin.css')
             <fieldset>
                 <legend>API</legend>
                 <p>
-                    <label>Endpoint URL:<br>
-                        <input type="text" name="api_endpoint" value="<?= htmlspecialcharsbx($endpoint) ?>" size="60">
-                    </label>
-                    <br><small>По умолчанию: https://lk.blocksee.ru/api.php</small>
+                    <small>Соединение с AI-сервисом настраивается автоматически. Проверьте, что домен сайта добавлен в белый список у вендора.</small>
                 </p>
                 <p>
                     <button type="submit" name="test_api" value="1" class="adm-btn">Проверить соединение</button>
