@@ -166,6 +166,12 @@ class Options
         return $cache[$iblockId];
     }
 
+    public static function buildElementEditUrl(int $iblockId, int $elementId, string $lang = 'ru'): string
+    {
+        $type = self::getIblockTypeId($iblockId) ?: 'catalog';
+        return "/bitrix/admin/iblock_element_edit.php?IBLOCK_ID={$iblockId}&type=" . urlencode($type) . "&ID={$elementId}&lang=" . urlencode($lang);
+    }
+
     public static function getReviewsSource(): string
     {
         $val = (string)self::get('reviews_source', self::REVIEWS_SOURCE_AUTO);

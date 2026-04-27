@@ -85,6 +85,148 @@ class Generator extends Controller
         return ['description' => $res['description'], 'saved' => true];
     }
 
+    /**
+     * Резолвит список URL карточек товаров в массив элементов.
+     * Парсит каждый URL → берёт последний сегмент path как символьный код товара →
+     * ищет элемент в инфоблоках-каталогах по CODE. Если не найдено по CODE,
+     * fallback — поиск по DETAIL_PAGE_URL (LIKE %path%).
+     *
+     * Возвращает массив {url, code, id, name, iblock_id, type, edit_url, status, error}.
+     */
+    public function resolveUrlsAction(string $urls): ?array
+    {
+        if (!$this->requireAdmin()) return null;
+        if (!Loader::includeModule('iblock')) {
+            $this->addError(new Error('Модуль iblock недоступен'));
+            return null;
+        }
+
+        $lines = preg_split('/[\r\n]+/u', $urls);
+        // url => { code, original }
+        $byCode = [];
+        $byPath = [];
+        $rawList = [];
+        foreach ($lines as $line) {
+            $line = trim((string)$line);
+            if ($line === '') continue;
+            $path = parse_url($line, PHP_URL_PATH);
+            if (!$path) {
+                // Может быть просто символьный код, без http://
+                $path = '/' . trim($line, '/') . '/';
+            }
+            $path = '/' . trim($path, '/') . '/';
+            $segments = array_values(array_filter(explode('/', trim($path, '/')), fn($s) => $s !== ''));
+            $code = $segments ? end($segments) : '';
+            $rawList[] = ['url' => $line, 'path' => $path, 'code' => $code];
+            if ($code !== '') {
+                $byCode[$code] = true;
+            }
+            if ($path !== '/') {
+                $byPath[$path] = true;
+            }
+        }
+        if (!$rawList) {
+            return ['items' => []];
+        }
+
+        $iblockIds = Options::getCatalogIblockIds();
+        if (!$iblockIds) {
+            $this->addError(new Error('Каталог-инфоблоки не найдены'));
+            return null;
+        }
+
+        // Phase 1: resolve by CODE (быстро, точно)
+        $foundByCode = [];
+        if ($byCode) {
+            $rs = \CIBlockElement::GetList(
+                ['ID' => 'ASC'],
+                ['IBLOCK_ID' => $iblockIds, 'CODE' => array_keys($byCode), 'ACTIVE' => 'Y'],
+                false,
+                false,
+                ['ID', 'NAME', 'CODE', 'IBLOCK_ID']
+            );
+            while ($row = $rs->Fetch()) {
+                // Берём первый встреченный элемент с этим CODE (на случай дублей в SKU/инфоблоках)
+                if (!isset($foundByCode[$row['CODE']])) {
+                    $foundByCode[$row['CODE']] = $row;
+                }
+            }
+        }
+
+        // Phase 2: для не-найденных пробуем по DETAIL_PAGE_URL (LIKE по path).
+        // Это медленнее, но ловит случаи с подкаталогами / ЧПУ-нестандартом.
+        $unresolved = [];
+        foreach ($rawList as $item) {
+            if ($item['code'] !== '' && isset($foundByCode[$item['code']])) continue;
+            if ($item['path'] !== '/') $unresolved[$item['path']] = true;
+        }
+        $foundByPath = [];
+        if ($unresolved) {
+            $conn = \Bitrix\Main\Application::getConnection();
+            // ID списка инфоблоков для безопасного IN
+            $ibIn = implode(',', array_map('intval', $iblockIds));
+            $placeholders = [];
+            foreach (array_keys($unresolved) as $p) {
+                // экранируем % и _ внутри path, чтобы не было ложных LIKE-совпадений
+                $escaped = $conn->getSqlHelper()->forSql(addcslashes($p, '%_\\'));
+                $placeholders[$p] = "DETAIL_PAGE_URL LIKE '%{$escaped}'";
+            }
+            // Генерируем большое OR — до ~100 LIKE безопасно. Для очень длинных списков чанкуем.
+            $chunks = array_chunk(array_keys($unresolved), 100, true);
+            foreach ($chunks as $chunk) {
+                $ors = [];
+                foreach ($chunk as $p) {
+                    $ors[] = $placeholders[$p];
+                }
+                $sql = "SELECT ID, NAME, CODE, IBLOCK_ID, DETAIL_PAGE_URL FROM b_iblock_element
+                        WHERE IBLOCK_ID IN ({$ibIn}) AND ACTIVE='Y' AND (" . implode(' OR ', $ors) . ")";
+                $rsP = $conn->query($sql);
+                while ($row = $rsP->fetch()) {
+                    foreach ($chunk as $p) {
+                        if (mb_substr($row['DETAIL_PAGE_URL'], -mb_strlen($p)) === $p) {
+                            if (!isset($foundByPath[$p])) {
+                                $foundByPath[$p] = $row;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Phase 3: build response
+        $items = [];
+        foreach ($rawList as $item) {
+            $matched = null;
+            if ($item['code'] !== '' && isset($foundByCode[$item['code']])) {
+                $matched = $foundByCode[$item['code']];
+            } elseif (isset($foundByPath[$item['path']])) {
+                $matched = $foundByPath[$item['path']];
+            }
+
+            if ($matched) {
+                $items[] = [
+                    'url' => $item['url'],
+                    'code' => (string)$matched['CODE'],
+                    'id' => (int)$matched['ID'],
+                    'name' => (string)$matched['NAME'],
+                    'iblock_id' => (int)$matched['IBLOCK_ID'],
+                    'edit_url' => Options::buildElementEditUrl((int)$matched['IBLOCK_ID'], (int)$matched['ID']),
+                    'status' => 'found',
+                ];
+            } else {
+                $items[] = [
+                    'url' => $item['url'],
+                    'code' => $item['code'],
+                    'id' => 0,
+                    'status' => 'not_found',
+                ];
+            }
+        }
+
+        return ['items' => $items];
+    }
+
     public function listAction(int $iblockId = 0, int $offset = 0, int $limit = 50, string $search = '', string $scenario = 'all'): ?array
     {
         if (!$this->requireAdmin()) {

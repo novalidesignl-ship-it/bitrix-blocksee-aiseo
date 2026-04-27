@@ -149,6 +149,7 @@ function bsee_get_sections(int $elementId): string
                 <span class="bsee-label">Сохранять в:</span>
                 <b><?= htmlspecialcharsbx($targetLabel) ?></b>
             </div>
+            <a href="blocksee_aiseo_list_urls.php?lang=<?= LANGUAGE_ID ?>" class="bsee-btn bsee-btn-ghost">Генерация по ссылкам →</a>
             <a href="blocksee_aiseo_options.php?lang=<?= LANGUAGE_ID ?>" class="bsee-btn bsee-btn-ghost">Настройки модуля</a>
         </div>
     </div>

@@ -22,7 +22,7 @@ return [
         [
             'text' => Loc::getMessage('BLOCKSEE_AISEO_MENU_LIST') ?: 'Описания товаров',
             'url' => 'blocksee_aiseo_list.php?lang=' . LANGUAGE_ID,
-            'more_url' => [],
+            'more_url' => ['blocksee_aiseo_list_urls.php'],
             'title' => Loc::getMessage('BLOCKSEE_AISEO_MENU_LIST_TITLE') ?: 'Генерация описаний',
         ],
         [
