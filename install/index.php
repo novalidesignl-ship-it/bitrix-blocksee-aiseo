@@ -91,6 +91,7 @@ class blocksee_aiseo extends CModule
             'temperature' => '0.7',
             'max_tokens' => '3000',
             'creative_mode' => 'N',
+            'quality_tier' => 'standard',
             'reviews_source' => 'auto',
             'reviews_blog_url' => 'catalog_comments',
             'reviews_blog_id' => '',

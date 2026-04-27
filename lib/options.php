@@ -55,7 +55,20 @@ class Options
             'temperature' => (float)self::get('temperature', '0.7'),
             'max_tokens' => (int)self::get('max_tokens', '3000'),
             'creative_mode' => self::get('creative_mode', 'N') === 'Y',
+            'quality' => self::getQualityTier(),
         ];
+    }
+
+    /**
+     * Качество генерации: 'standard' (по умолчанию, GPT-роутер на стороне API)
+     * или 'high' (Claude Sonnet или другая премиум-модель — зависит от роутера API).
+     * Параметр прокидывается в payload как `settings.quality`. Если API его не
+     * поддерживает — ничего не ломается, просто игнорируется.
+     */
+    public static function getQualityTier(): string
+    {
+        $val = (string)self::get('quality_tier', 'standard');
+        return $val === 'high' ? 'high' : 'standard';
     }
 
     public static function getReviewsForumId(): int
@@ -77,6 +90,7 @@ class Options
             'custom_prompt' => (string)self::get('reviews_custom_prompt', ''),
             'temperature' => (float)self::get('temperature', '0.7'),
             'creative_mode' => self::get('creative_mode', 'N') === 'Y',
+            'quality' => self::getQualityTier(),
         ];
     }
 

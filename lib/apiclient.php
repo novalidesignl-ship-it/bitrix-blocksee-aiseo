@@ -28,6 +28,7 @@ class ApiClient
                 'temperature' => (float)($settings['temperature'] ?? 0.7),
                 'max_tokens' => (int)($settings['max_tokens'] ?? 3000),
                 'creative_mode' => !empty($settings['creative_mode']),
+                'quality' => (($settings['quality'] ?? 'standard') === 'high') ? 'high' : 'standard',
             ],
         ];
 
@@ -99,6 +100,7 @@ class ApiClient
                 'custom_prompt' => (string)($settings['custom_prompt'] ?? ''),
                 'temperature' => (float)($settings['temperature'] ?? 0.8),
                 'creative_mode' => !empty($settings['creative_mode']),
+                'quality' => (($settings['quality'] ?? 'standard') === 'high') ? 'high' : 'standard',
             ],
         ];
 
