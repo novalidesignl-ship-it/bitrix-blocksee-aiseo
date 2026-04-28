@@ -122,6 +122,36 @@
             });
         });
 
+        qsa('.bsee-restore-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.id;
+                const row = qs('tr[data-element-id="' + id + '"]');
+                const ta = qs('.bsee-desc-textarea', row);
+                if (!confirm('Откатить описание этого товара к предыдущей версии? Текст в редакторе будет заменён на сохранённый оригинал.')) return;
+                setBusy(btn, true, 'Откатываю…');
+                call('restoreLatest', { id })
+                    .then(data => {
+                        if (ta && typeof data.description === 'string') {
+                            ta.value = data.description;
+                            ta.classList.add('bsee-desc-generated');
+                            setTimeout(() => ta.classList.remove('bsee-desc-generated'), 2500);
+                        }
+                        btn.classList.remove('is-busy');
+                        btn.disabled = false;
+                        btn.textContent = '✓ Откачено';
+                        btn.classList.add('bsee-btn-success');
+                        setTimeout(() => {
+                            btn.textContent = btn.dataset.origText || '↶ Откатить';
+                            btn.classList.remove('bsee-btn-success');
+                        }, 1800);
+                    })
+                    .catch(e => {
+                        setBusy(btn, false);
+                        alert('Ошибка отката: ' + e.message);
+                    });
+            });
+        });
+
         qsa('.bsee-save-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const id = btn.dataset.id;

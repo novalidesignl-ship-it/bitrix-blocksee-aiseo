@@ -300,6 +300,7 @@ function bsee_get_sections(int $elementId): string
                     <td class="bsee-cell-actions">
                         <button type="button" class="bsee-btn bsee-btn-small bsee-btn-primary bsee-generate-btn" data-id="<?= $elementId ?>">Сгенерировать</button>
                         <button type="button" class="bsee-btn bsee-btn-small bsee-save-btn" data-id="<?= $elementId ?>">Сохранить</button>
+                        <button type="button" class="bsee-btn bsee-btn-small bsee-btn-ghost bsee-restore-btn" data-id="<?= $elementId ?>" title="Откатить к предыдущей версии">↶ Откатить</button>
                     </td>
                 </tr>
             <?php endforeach; ?>

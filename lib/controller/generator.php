@@ -86,6 +86,53 @@ class Generator extends Controller
     }
 
     /**
+     * Восстанавливает последнюю сохранённую копию описания из таблицы бэкапов.
+     */
+    public function restoreLatestAction(int $id): ?array
+    {
+        if (!$this->requireAdmin()) {
+            return null;
+        }
+        if ($id <= 0) {
+            $this->addError(new Error('Некорректный ID'));
+            return null;
+        }
+        if (!Loader::includeModule('iblock')) {
+            $this->addError(new Error('Модуль iblock недоступен'));
+            return null;
+        }
+        $gen = new AiGenerator();
+        $res = $gen->restoreLatest($id);
+        if (empty($res['success'])) {
+            $this->addError(new Error($res['error'] ?? 'Ошибка восстановления'));
+            return null;
+        }
+        return [
+            'restored' => true,
+            'description' => (string)($res['restored'] ?? ''),
+            'created_at' => (string)($res['created_at'] ?? ''),
+        ];
+    }
+
+    /**
+     * Возвращает информацию о наличии бэкапа для товара (для UI кнопки «Восстановить»).
+     */
+    public function hasBackupAction(int $id): ?array
+    {
+        if (!$this->requireAdmin()) return null;
+        if ($id <= 0) return ['has' => false];
+        $field = (\Blocksee\Aiseo\Options::getTargetField() === 'PREVIEW_TEXT') ? 'PREVIEW_TEXT' : 'DETAIL_TEXT';
+        if (\Blocksee\Aiseo\Options::getTargetField() === 'PROPERTY') {
+            $field = 'PROPERTY:' . \Blocksee\Aiseo\Options::getTargetPropertyCode();
+        }
+        $b = \Blocksee\Aiseo\BackupStorage::getLatest($id, $field);
+        return [
+            'has' => $b !== null,
+            'created_at' => $b['created_at'] ?? null,
+        ];
+    }
+
+    /**
      * Резолвит список URL карточек товаров в массив элементов.
      * Парсит каждый URL → берёт последний сегмент path как символьный код товара →
      * ищет элемент в инфоблоках-каталогах по CODE. Если не найдено по CODE,

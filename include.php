@@ -10,6 +10,7 @@ Loader::registerAutoLoadClasses(
         'Blocksee\\Aiseo\\ReviewsGenerator' => 'lib/reviewsgenerator.php',
         'Blocksee\\Aiseo\\Options' => 'lib/options.php',
         'Blocksee\\Aiseo\\TextSanitizer' => 'lib/textsanitizer.php',
+        'Blocksee\\Aiseo\\BackupStorage' => 'lib/backupstorage.php',
         'Blocksee\\Aiseo\\Controller\\Generator' => 'lib/controller/generator.php',
         'Blocksee\\Aiseo\\Controller\\Reviews' => 'lib/controller/reviews.php',
         'Blocksee\\Aiseo\\Reviews\\Backend' => 'lib/reviews/backend.php',

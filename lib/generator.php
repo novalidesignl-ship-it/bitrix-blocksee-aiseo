@@ -61,21 +61,41 @@ class Generator
             if (!$element) {
                 return ['success' => false, 'error' => 'Элемент не найден'];
             }
+            $this->backupBeforeWrite($elementId, (int)$element['IBLOCK_ID'], 'PROPERTY:' . $propCode, $description);
             \CIBlockElement::SetPropertyValuesEx($elementId, $element['IBLOCK_ID'], [$propCode => $description]);
         } else {
+            // Считываем текущие значения ДО Update, чтобы корректно записать ORIGINAL_VALUE в бэкап.
+            $current = \CIBlockElement::GetList(
+                [],
+                ['ID' => $elementId],
+                false,
+                false,
+                ['ID', 'IBLOCK_ID', 'DETAIL_TEXT', 'PREVIEW_TEXT']
+            )->Fetch();
+            $iblockId = (int)($current['IBLOCK_ID'] ?? 0);
+
             $fields = [];
+            $fieldsToBackup = [];
             if ($targetField === 'DETAIL_TEXT' || $targetField === 'BOTH') {
                 $fields['DETAIL_TEXT'] = $description;
                 $fields['DETAIL_TEXT_TYPE'] = 'html';
+                $fieldsToBackup['DETAIL_TEXT'] = (string)($current['DETAIL_TEXT'] ?? '');
             }
             if ($targetField === 'PREVIEW_TEXT' || $targetField === 'BOTH') {
                 $preview = $this->extractFirstParagraph($description);
                 $fields['PREVIEW_TEXT'] = $preview;
                 $fields['PREVIEW_TEXT_TYPE'] = 'html';
+                $fieldsToBackup['PREVIEW_TEXT'] = (string)($current['PREVIEW_TEXT'] ?? '');
             }
             if (empty($fields)) {
                 $fields['DETAIL_TEXT'] = $description;
                 $fields['DETAIL_TEXT_TYPE'] = 'html';
+                $fieldsToBackup['DETAIL_TEXT'] = (string)($current['DETAIL_TEXT'] ?? '');
+            }
+            // Бэкапим ДО Update — на случай если запись провалится, бэкап всё равно есть
+            foreach ($fieldsToBackup as $field => $original) {
+                $newVal = $fields[$field] ?? null;
+                $this->backupBeforeWrite($elementId, $iblockId, $field, $newVal, $original);
             }
             $ok = $iblockElement->Update($elementId, $fields);
             if (!$ok) {
@@ -84,6 +104,96 @@ class Generator
         }
 
         return ['success' => true];
+    }
+
+    /**
+     * Сохраняет оригинал поля в таблицу бэкапов перед перезаписью.
+     * Если ORIGINAL пуст — ничего не сохраняет (BackupStorage::save сам это проверяет).
+     */
+    private function backupBeforeWrite(int $elementId, int $iblockId, string $field, ?string $newValue, ?string $originalValue = null): void
+    {
+        try {
+            if ($originalValue === null) {
+                // PROPERTY: текущее значение читаем отдельно
+                if (strpos($field, 'PROPERTY:') === 0) {
+                    $code = substr($field, strlen('PROPERTY:'));
+                    $rs = \CIBlockElement::GetProperty($iblockId, $elementId, [], ['CODE' => $code]);
+                    $vals = [];
+                    while ($p = $rs->Fetch()) {
+                        if ($p['VALUE'] !== null && $p['VALUE'] !== '' && $p['VALUE'] !== false) {
+                            $vals[] = is_array($p['VALUE']) ? implode(' ', $p['VALUE']) : (string)$p['VALUE'];
+                        }
+                    }
+                    $originalValue = implode("\n", $vals);
+                }
+            }
+            $userId = null;
+            global $USER;
+            if ($USER && method_exists($USER, 'GetID')) {
+                $userId = (int)$USER->GetID() ?: null;
+            }
+            BackupStorage::save($elementId, $iblockId, $field, $originalValue, $newValue, $userId);
+        } catch (\Throwable $e) {
+            // Бэкап не должен ломать основной флоу — просто логируем.
+            \AddMessage2Log('blocksee.aiseo backup failed: ' . $e->getMessage(), 'blocksee.aiseo');
+        }
+    }
+
+    /**
+     * Восстановить последнюю сохранённую версию указанного поля.
+     */
+    public function restoreLatest(int $elementId, ?string $field = null): array
+    {
+        if ($elementId <= 0) {
+            return ['success' => false, 'error' => 'Некорректный ID'];
+        }
+        $targetField = $field ?: $this->resolveBackupFieldKey();
+        $backup = BackupStorage::getLatest($elementId, $targetField);
+        if (!$backup) {
+            return ['success' => false, 'error' => 'Резервной копии нет'];
+        }
+
+        $iblockElement = new \CIBlockElement();
+
+        if (strpos($targetField, 'PROPERTY:') === 0) {
+            $code = substr($targetField, strlen('PROPERTY:'));
+            $element = \CIBlockElement::GetByID($elementId)->Fetch();
+            if (!$element) {
+                return ['success' => false, 'error' => 'Элемент не найден'];
+            }
+            \CIBlockElement::SetPropertyValuesEx($elementId, $element['IBLOCK_ID'], [$code => $backup['original_value']]);
+        } else {
+            $fields = [
+                $targetField => $backup['original_value'],
+                $targetField . '_TYPE' => 'html',
+            ];
+            $ok = $iblockElement->Update($elementId, $fields);
+            if (!$ok) {
+                return ['success' => false, 'error' => $iblockElement->LAST_ERROR ?: 'Ошибка восстановления'];
+            }
+        }
+
+        return [
+            'success' => true,
+            'restored' => $backup['original_value'],
+            'created_at' => $backup['created_at'],
+        ];
+    }
+
+    /**
+     * Возвращает ключ поля для бэкапа, исходя из настроек модуля.
+     */
+    private function resolveBackupFieldKey(): string
+    {
+        $target = Options::getTargetField();
+        if ($target === 'PROPERTY') {
+            return 'PROPERTY:' . Options::getTargetPropertyCode();
+        }
+        if ($target === 'BOTH' || $target === 'PREVIEW_TEXT') {
+            // На "BOTH" — основное поле всё-таки DETAIL_TEXT, его и восстанавливаем.
+            return $target === 'PREVIEW_TEXT' ? 'PREVIEW_TEXT' : 'DETAIL_TEXT';
+        }
+        return 'DETAIL_TEXT';
     }
 
     /**

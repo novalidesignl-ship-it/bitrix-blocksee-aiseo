@@ -33,6 +33,7 @@ class blocksee_aiseo extends CModule
 
         ModuleManager::registerModule($this->MODULE_ID);
         $this->installFiles();
+        $this->installDB();
         $this->installDefaultOptions();
         $this->ensureReviewsForum();
         $this->ensureReviewsBlog();
@@ -65,6 +66,18 @@ class blocksee_aiseo extends CModule
             true,
             true
         );
+        return true;
+    }
+
+    /**
+     * Создаёт таблицу резервных копий описаний (если ещё не создана).
+     * Безопасно вызывать повторно.
+     */
+    public function installDB()
+    {
+        if (Loader::includeModule($this->MODULE_ID)) {
+            \Blocksee\Aiseo\BackupStorage::ensureTable();
+        }
         return true;
     }
 
