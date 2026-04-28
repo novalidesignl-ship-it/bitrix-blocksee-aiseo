@@ -2,6 +2,12 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.4.3] — 2026-04-28
+
+### Исправлено
+- **Резолв 750+ URL'ов на странице «Генерация по ссылкам»** падал с ошибкой `Unknown column 'DETAIL_PAGE_URL' in 'field list'`. Причина: в `Generator::resolveUrlsAction` Phase 2 (fallback) делала прямой SQL `SELECT DETAIL_PAGE_URL FROM b_iblock_element`, но эта колонка реально не существует — `DETAIL_PAGE_URL` это шаблон на инфоблоке (`b_iblock.DETAIL_PAGE_URL`), который Bitrix подставляет на лету. На небольших партиях все URL'ы матчились в Phase 1 по `CODE`, до Phase 2 не доходило. На больших — хоть один не матчился, Phase 2 запускалась и роняла весь резолв.
+- Удалил Phase 2 целиком. Match по символьному коду (`CODE` = последний сегмент URL) корректно резолвит реальные кейсы (`/catalog/.../{element-code}/`). URL без CODE-match помечаются `not_found` (например, если случайно вставили ссылку на раздел, а не товар).
+
 ## [1.4.2] — 2026-04-28
 
 ### Исправлено

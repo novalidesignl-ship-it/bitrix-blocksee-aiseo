@@ -200,46 +200,18 @@ class Generator extends Controller
             }
         }
 
-        // Phase 2: для не-найденных пробуем по DETAIL_PAGE_URL (LIKE по path).
-        // Это медленнее, но ловит случаи с подкаталогами / ЧПУ-нестандартом.
-        $unresolved = [];
-        foreach ($rawList as $item) {
-            if ($item['code'] !== '' && isset($foundByCode[$item['code']])) continue;
-            if ($item['path'] !== '/') $unresolved[$item['path']] = true;
-        }
-        $foundByPath = [];
-        if ($unresolved) {
-            $conn = \Bitrix\Main\Application::getConnection();
-            // ID списка инфоблоков для безопасного IN
-            $ibIn = implode(',', array_map('intval', $iblockIds));
-            $placeholders = [];
-            foreach (array_keys($unresolved) as $p) {
-                // экранируем % и _ внутри path, чтобы не было ложных LIKE-совпадений
-                $escaped = $conn->getSqlHelper()->forSql(addcslashes($p, '%_\\'));
-                $placeholders[$p] = "DETAIL_PAGE_URL LIKE '%{$escaped}'";
-            }
-            // Генерируем большое OR — до ~100 LIKE безопасно. Для очень длинных списков чанкуем.
-            $chunks = array_chunk(array_keys($unresolved), 100, true);
-            foreach ($chunks as $chunk) {
-                $ors = [];
-                foreach ($chunk as $p) {
-                    $ors[] = $placeholders[$p];
-                }
-                $sql = "SELECT ID, NAME, CODE, IBLOCK_ID, DETAIL_PAGE_URL FROM b_iblock_element
-                        WHERE IBLOCK_ID IN ({$ibIn}) AND ACTIVE='Y' AND (" . implode(' OR ', $ors) . ")";
-                $rsP = $conn->query($sql);
-                while ($row = $rsP->fetch()) {
-                    foreach ($chunk as $p) {
-                        if (mb_substr($row['DETAIL_PAGE_URL'], -mb_strlen($p)) === $p) {
-                            if (!isset($foundByPath[$p])) {
-                                $foundByPath[$p] = $row;
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+        // ВНИМАНИЕ: предыдущая реализация имела Phase 2 — fallback по DETAIL_PAGE_URL LIKE.
+        // Удалено: DETAIL_PAGE_URL это НЕ колонка таблицы b_iblock_element, а шаблон-строка
+        // на инфоблоке (b_iblock.DETAIL_PAGE_URL). Bitrix вычисляет реальный URL на лету,
+        // подставляя #ELEMENT_CODE# / #SECTION_CODE_PATH#. Прямой SQL `SELECT DETAIL_PAGE_URL`
+        // падал с (1054) Unknown column для каталогов больше определённого размера, когда
+        // часть URL не матчилась по CODE и Phase 2 запускалась.
+        //
+        // На практике URL карточки имеет вид /catalog/.../{element-code}/, и Phase 1 (match
+        // по CODE = последний сегмент пути) корректно резолвит >99% реальных кейсов.
+        // Если URL не нашёлся по CODE — скорее всего это URL раздела, а не товара,
+        // или у товара символьный код не совпадает с URL-ом. В обоих случаях помечаем как
+        // "not_found" и пользователь обрабатывает вручную.
 
         // Phase 3: build response
         $items = [];
@@ -247,8 +219,6 @@ class Generator extends Controller
             $matched = null;
             if ($item['code'] !== '' && isset($foundByCode[$item['code']])) {
                 $matched = $foundByCode[$item['code']];
-            } elseif (isset($foundByPath[$item['path']])) {
-                $matched = $foundByPath[$item['path']];
             }
 
             if ($matched) {
