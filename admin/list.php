@@ -215,6 +215,7 @@ function bsee_get_sections(int $elementId): string
                 Выбрано: <strong id="bsee-selected-count">0</strong>
                 <button type="button" class="bsee-btn bsee-btn-primary" id="bsee-bulk-generate">Сгенерировать выбранные</button>
                 <button type="button" class="bsee-btn" id="bsee-bulk-save">Сохранить изменения</button>
+                <button type="button" class="bsee-btn bsee-btn-ghost" id="bsee-bulk-restore" title="Откатить выделенные товары к предыдущей версии описания">↶ Откатить выделенные</button>
             </div>
         </div>
         <div class="bsee-bulk-right">

@@ -259,6 +259,30 @@
         });
     }
 
+    function initBulkRestore() {
+        const btn = qs('#bsee-bulk-restore');
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+            const ids = qsa('.bsee-item-check:checked').map(c => c.value);
+            if (!ids.length) return alert('Выберите хотя бы один товар.');
+            if (!confirm(`Откатить ${ids.length} ${ids.length === 1 ? 'товар' : (ids.length < 5 ? 'товара' : 'товаров')} к предыдущей версии описания? У товаров без сохранённого бэкапа ничего не изменится.`)) return;
+            btn.disabled = true;
+            processQueue(ids, id =>
+                call('restoreLatest', { id }).then(data => {
+                    const row = qs('tr[data-element-id="' + id + '"]');
+                    const ta = qs('.bsee-desc-textarea', row);
+                    if (ta && data && typeof data.description === 'string') {
+                        ta.value = data.description;
+                        ta.classList.add('bsee-desc-generated');
+                        setTimeout(() => ta.classList.remove('bsee-desc-generated'), 2500);
+                    }
+                })
+            ).then(() => {
+                // Не перезагружаем страницу — пользователь видит обновлённые textarea
+            }).finally(() => { btn.disabled = false; });
+        });
+    }
+
     function initBulkSave() {
         const btn = qs('#bsee-bulk-save');
         if (!btn) return;
@@ -416,6 +440,7 @@
         initRowActions();
         initBulkGenerate();
         initBulkSave();
+        initBulkRestore();
         initScenarioModal();
         progressCancelBtn();
     });
