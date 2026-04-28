@@ -37,7 +37,6 @@ $targetLabel = match ($targetField) {
     'PROPERTY' => 'Свойство: ' . Options::getTargetPropertyCode(),
     default => 'Подробное описание (DETAIL_TEXT)',
 };
-$qualityTier = Options::getQualityTier();
 $customPrompt = Options::getCustomPrompt();
 ?>
 <div class="bsee-app">
@@ -47,9 +46,6 @@ $customPrompt = Options::getCustomPrompt();
             <div class="bsee-header-target">
                 <span class="bsee-label">Сохранять в:</span>
                 <b><?= htmlspecialcharsbx($targetLabel) ?></b>
-                &nbsp; · &nbsp;
-                <span class="bsee-label">Качество:</span>
-                <b><?= $qualityTier === 'high' ? 'Высокое' : 'Стандарт' ?></b>
             </div>
             <a href="blocksee_aiseo_list.php?lang=<?= LANGUAGE_ID ?>" class="bsee-btn bsee-btn-ghost">К списку товаров</a>
             <a href="blocksee_aiseo_options.php?lang=<?= LANGUAGE_ID ?>" class="bsee-btn bsee-btn-ghost">Настройки модуля</a>

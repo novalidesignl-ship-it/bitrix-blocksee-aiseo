@@ -34,8 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_bitrix_sessid()) {
         Options::set('temperature', (string)($_POST['temperature'] ?? '0.7'));
         Options::set('max_tokens', (string)($_POST['max_tokens'] ?? '3000'));
         Options::set('creative_mode', isset($_POST['creative_mode']) ? 'Y' : 'N');
-        $qt = (string)($_POST['quality_tier'] ?? 'standard');
-        Options::set('quality_tier', $qt === 'high' ? 'high' : 'standard');
+        // quality_tier больше не настраивается через UI — всегда «high» (журналистский
+        // промпт + DS Pro). Опция в БД остаётся для совместимости, но из формы не читается.
 
         // Reviews section
         $newSource = (string)($_POST['reviews_source'] ?? Options::REVIEWS_SOURCE_AUTO);
@@ -253,19 +253,6 @@ $APPLICATION->SetAdditionalCSS('/local/modules/blocksee.aiseo/assets/admin.css')
 
             <fieldset>
                 <legend>Параметры генерации</legend>
-                <?php $qualityTier = Options::getQualityTier(); ?>
-                <p>
-                    <label><b>Качество текста:</b></label><br>
-                    <label style="margin-right:18px;">
-                        <input type="radio" name="quality_tier" value="standard" <?= $qualityTier === 'standard' ? 'checked' : '' ?>>
-                        Стандарт (быстро, по умолчанию)
-                    </label>
-                    <label>
-                        <input type="radio" name="quality_tier" value="high" <?= $qualityTier === 'high' ? 'checked' : '' ?>>
-                        Высокое качество (медленнее)
-                    </label>
-                    <br><small>Высокое качество даёт более естественный и проработанный текст, но генерация занимает больше времени.</small>
-                </p>
                 <p>
                     <label>Temperature (0.0–2.0):<br>
                         <input type="number" step="0.1" min="0" max="2" name="temperature" value="<?= htmlspecialcharsbx((string)$settings['temperature']) ?>">

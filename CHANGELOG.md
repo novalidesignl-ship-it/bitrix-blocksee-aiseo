@@ -2,6 +2,17 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.6.0] — 2026-04-29
+
+### Изменено
+- **Убран quality-tier из UI.** Опция «Качество текста» (Стандарт/Высокое) удалена со страницы настроек модуля. Индикатор «Качество» убран из шапок страниц «Описания товаров» и «Генерация по ссылкам». Везде теперь используется одна модель — DeepSeek v4 Pro с дистиллированным журналистским промптом, который раньше был только в high-режиме. На стороне `lk.blocksee.ru` API соответственно: `bsee_models_chain_for_quality()` возвращает одну цепочку независимо от `settings.quality`, `bsee_pick_model_for_quality()` всегда `OPENROUTER_MODEL`, `UltimateAISEOGenerator` всегда работает в режиме «high» (журналистский тон, temp 0.7, без рекламных штампов).
+- `Options::getQualityTier()` теперь константно возвращает `'high'` — для обратной совместимости с payload-схемой (поле в payload остаётся, чтобы не ломать API-контракт, но сервер его игнорирует).
+
+### Server-side (lk.blocksee.ru, не в этом репо)
+- env: `OPENROUTER_MODEL=deepseek/deepseek-v4-pro`, `OPENROUTER_MODEL_FALLBACK=deepseek/deepseek-v4-flash`. На сбое DS Pro (rate limit, timeout, empty content) автоматический fallback на DS Flash.
+- env старые `OPENROUTER_MODEL_HIGH*` сохранены для совместимости, но больше не разделяют поведение (всё ведёт на одну DS Pro цепочку).
+- Промпт: всегда журналистско-технический тон без рекламы, без цены и артикула в контексте, лимит на длинное тире и восклицания, post-process чистит pseudo-lists и невалидную HTML-вложенность.
+
 ## [1.5.0] — 2026-04-28
 
 ### Добавлено

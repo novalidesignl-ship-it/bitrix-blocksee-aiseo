@@ -65,10 +65,14 @@ class Options
      * Параметр прокидывается в payload как `settings.quality`. Если API его не
      * поддерживает — ничего не ломается, просто игнорируется.
      */
+    /**
+     * С v1.6.0 quality-tier'ы убраны из UI и сервер игнорирует это поле — всегда
+     * используется DS Pro + журналистский промпт. Метод возвращает 'high' константно
+     * для обратной совместимости (в payload поле остаётся, чтобы не ломать схему).
+     */
     public static function getQualityTier(): string
     {
-        $val = (string)self::get('quality_tier', 'standard');
-        return $val === 'high' ? 'high' : 'standard';
+        return 'high';
     }
 
     public static function getReviewsForumId(): int
