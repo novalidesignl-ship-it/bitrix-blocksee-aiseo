@@ -150,6 +150,7 @@ function bsee_stars(int $rating): string
                     }
                 ?>
             </div>
+            <a href="blocksee_aiseo_reviews_urls.php?lang=<?= LANGUAGE_ID ?>" class="bsee-btn bsee-btn-ghost">Генерация по ссылкам →</a>
             <a href="blocksee_aiseo_options.php?lang=<?= LANGUAGE_ID ?>" class="bsee-btn bsee-btn-ghost">Настройки модуля</a>
             <a href="blocksee_aiseo_list.php?lang=<?= LANGUAGE_ID ?>" class="bsee-btn bsee-btn-ghost">К описаниям</a>
         </div>

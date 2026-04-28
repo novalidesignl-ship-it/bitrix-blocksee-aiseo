@@ -28,7 +28,7 @@ return [
         [
             'text' => Loc::getMessage('BLOCKSEE_AISEO_MENU_REVIEWS') ?: 'Отзывы товаров',
             'url' => 'blocksee_aiseo_reviews.php?lang=' . LANGUAGE_ID,
-            'more_url' => [],
+            'more_url' => ['blocksee_aiseo_reviews_urls.php'],
             'title' => Loc::getMessage('BLOCKSEE_AISEO_MENU_REVIEWS_TITLE') ?: 'Генерация отзывов',
         ],
         [
