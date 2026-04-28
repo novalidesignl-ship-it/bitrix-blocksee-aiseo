@@ -264,7 +264,7 @@ function bsee_get_sections(int $elementId): string
                 $thumb = bsee_img_src((int)($item['PREVIEW_PICTURE'] ?: $item['DETAIL_PICTURE']));
                 $price = $hasCatalog ? (float)($item['CATALOG_PRICE_1'] ?? 0) : 0;
                 $currency = (string)($item['CATALOG_CURRENCY_1'] ?? 'RUB');
-                $sections = bsee_get_sections($elementId);
+                $itemSections = bsee_get_sections($elementId);
                 $currentDesc = $targetField === 'PREVIEW_TEXT'
                     ? (string)$item['PREVIEW_TEXT']
                     : (string)($item['DETAIL_TEXT'] ?: $item['PREVIEW_TEXT']);
@@ -284,8 +284,8 @@ function bsee_get_sections(int $elementId): string
                         <a class="bsee-item-name" href="<?= htmlspecialcharsbx($editUrl) ?>" target="_blank"><?= htmlspecialcharsbx($item['NAME']) ?></a>
                         <div class="bsee-item-meta">
                             <span class="bsee-item-id">#<?= $elementId ?></span>
-                            <?php if ($sections): ?>
-                                <span class="bsee-item-sections"><?= htmlspecialcharsbx($sections) ?></span>
+                            <?php if ($itemSections): ?>
+                                <span class="bsee-item-sections"><?= htmlspecialcharsbx($itemSections) ?></span>
                             <?php endif; ?>
                         </div>
                         <?php if ($price > 0): ?>
