@@ -30,11 +30,32 @@ class Generator extends Controller
         return true;
     }
 
+    /**
+     * Закрывает сессию для записи. Используется в долгих AJAX-actions (генерация
+     * описаний, отзывов, восстановление из бэкапа) перед тяжёлым внешним вызовом.
+     *
+     * Без этого один воркер держит лок сессии Bitrix на 25-45 секунд, и ВСЕ
+     * остальные запросы того же пользователя (фронт, админка, любой AJAX)
+     * встают в очередь — пользователь видит зависание сайта, хотя сервер
+     * технически работает. Это классическая проблема Bitrix session lock.
+     *
+     * После вызова в массиве $_SESSION можно ЧИТАТЬ, но НЕЛЬЗЯ изменять.
+     * В наших долгих actions сессия не меняется — только проверка прав
+     * через $USER->IsAdmin() в requireAdmin(), всё что нужно уже прочитано.
+     */
+    private function releaseSessionLock(): void
+    {
+        if (PHP_SESSION_ACTIVE === session_status()) {
+            @session_write_close();
+        }
+    }
+
     public function generateAction(int $id): ?array
     {
         if (!$this->requireAdmin()) {
             return null;
         }
+        $this->releaseSessionLock();
         if ($id <= 0) {
             $this->addError(new Error('Некорректный ID'));
             return null;
@@ -71,6 +92,7 @@ class Generator extends Controller
         if (!$this->requireAdmin()) {
             return null;
         }
+        $this->releaseSessionLock();
         $gen = new AiGenerator();
         $res = $gen->generateForElement($id);
         if (empty($res['success'])) {

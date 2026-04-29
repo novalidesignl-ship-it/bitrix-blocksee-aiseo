@@ -30,6 +30,17 @@ class Reviews extends Controller
         return true;
     }
 
+    /**
+     * Закрывает Bitrix session lock перед долгим внешним вызовом.
+     * См. подробное обоснование в Generator::releaseSessionLock().
+     */
+    private function releaseSessionLock(): void
+    {
+        if (PHP_SESSION_ACTIVE === session_status()) {
+            @session_write_close();
+        }
+    }
+
     public function generateAndSaveAction(int $id, int $count = 0): ?array
     {
         if (!$this->requireAdmin()) return null;
@@ -37,6 +48,7 @@ class Reviews extends Controller
             $this->addError(new Error('Некорректный ID'));
             return null;
         }
+        $this->releaseSessionLock();
         $gen = new ReviewsGenerator();
         $res = $gen->generateAndSaveForElement($id, $count);
         if (empty($res['success'])) {
@@ -57,6 +69,7 @@ class Reviews extends Controller
             $this->addError(new Error('Некорректный ID'));
             return null;
         }
+        $this->releaseSessionLock();
         $gen = new ReviewsGenerator();
         $res = $gen->generateForElement($id, $count);
         if (empty($res['success'])) {
