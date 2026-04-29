@@ -12,7 +12,11 @@
         }
     ],
     "require": {
-        "php": ">=7.0"
+        "php": ">=7.1"
+    },
+    "scripts": {
+        "check-compat": "bin/check-php71-compat.sh",
+        "lint": "find . -name '*.php' -not -path './.git/*' | xargs -I {} php -l {}"
     },
     "support": {
         "source": "https://github.com/novalidesignl-ship-it/bitrix-blocksee-aiseo",

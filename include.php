@@ -2,6 +2,22 @@
 
 use Bitrix\Main\Loader;
 
+// Полифиллы для совместимости с PHP < 7.3 (часть хостингов до сих пор на 7.2).
+// array_key_first/last появились в PHP 7.3.
+if (!function_exists('array_key_first')) {
+    function array_key_first(array $arr) {
+        foreach ($arr as $key => $unused) {
+            return $key;
+        }
+        return null;
+    }
+}
+if (!function_exists('array_key_last')) {
+    function array_key_last(array $arr) {
+        return key(array_slice($arr, -1, 1, true));
+    }
+}
+
 Loader::registerAutoLoadClasses(
     'blocksee.aiseo',
     [

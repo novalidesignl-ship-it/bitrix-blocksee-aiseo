@@ -7,7 +7,8 @@ use Bitrix\Main\Web\Json;
 
 class ApiClient
 {
-    private string $endpoint;
+    /** @var string */
+    private $endpoint;
 
     public function __construct(?string $endpoint = null)
     {

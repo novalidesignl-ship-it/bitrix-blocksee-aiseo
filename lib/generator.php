@@ -9,7 +9,8 @@ use Bitrix\Iblock\IblockTable;
 
 class Generator
 {
-    private ApiClient $apiClient;
+    /** @var ApiClient */
+    private $apiClient;
 
     public function __construct(?ApiClient $apiClient = null)
     {

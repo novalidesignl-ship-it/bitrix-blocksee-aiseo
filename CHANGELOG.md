@@ -2,6 +2,21 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.6.4] — 2026-04-29
+
+### Исправлено
+- Убраны последние **typed properties** (PHP 7.4+) в `lib/apiclient.php`, `lib/generator.php`, `lib/reviewsgenerator.php` (`private string $endpoint`, `private ApiClient $apiClient` и т.п.). Заменены на классические `private $endpoint` + `@var` PHPDoc. Это последний шаг по полной поддержке PHP 7.1+.
+
+### Добавлено
+- **`bin/check-php71-compat.sh`** — автоматическая проверка кода на совместимость с PHP 7.1+. Скрипт grep'ает все 7.4+/8+/8.1+ syntax-конструкции (`match()`, `fn() =>`, `?->`, typed properties, spread в массивах, `??=`, `1_000`, `str_contains`, `readonly`, `enum`, `array_key_first` без полифилла и т.д.) и завершается с exit code 1 при найденных нарушениях. **Запускается обязательно перед каждым релизом** — так будущие правки случайно не сломают совместимость.
+- В `composer.json` добавлены скрипты `composer check-compat` и `composer lint` для удобного запуска.
+- `composer.json`: `php >= 7.1` (фиксируем минимальную версию).
+
+## [1.6.3] — 2026-04-29
+
+### Исправлено
+- **Call to undefined function `array_key_first()` на хостингах с PHP < 7.3.** Функции `array_key_first/last` появились в PHP 7.3. Использовались в `admin/list.php:41` и `admin/reviews.php:48` для выбора первого инфоблока, если ни один не выбран. Добавил полифиллы в `include.php` (через `function_exists`-чек), теперь модуль работает и на PHP 7.0-7.2.
+
 ## [1.6.2] — 2026-04-29
 
 ### Исправлено

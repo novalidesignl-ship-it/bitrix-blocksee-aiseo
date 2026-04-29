@@ -9,9 +9,12 @@ use Blocksee\Aiseo\Reviews\Scenarios;
 
 class ReviewsGenerator
 {
-    private ApiClient $apiClient;
-    private Generator $productGen;
-    private ?Backend $backend;
+    /** @var ApiClient */
+    private $apiClient;
+    /** @var Generator */
+    private $productGen;
+    /** @var Backend|null */
+    private $backend;
 
     public function __construct(?ApiClient $apiClient = null, ?Generator $productGen = null, ?Backend $backend = null)
     {
