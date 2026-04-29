@@ -116,12 +116,20 @@ if ($selectedIblockId > 0) {
 }
 
 $targetField = Options::getTargetField();
-$targetLabel = match ($targetField) {
-    'PREVIEW_TEXT' => 'Краткое описание (PREVIEW_TEXT)',
-    'BOTH' => 'Подробное + краткое описание',
-    'PROPERTY' => 'Свойство: ' . Options::getTargetPropertyCode(),
-    default => 'Подробное описание (DETAIL_TEXT)',
-};
+// switch вместо match() для совместимости с PHP 7.4 (часть хостингов до сих пор на 7.4).
+switch ($targetField) {
+    case 'PREVIEW_TEXT':
+        $targetLabel = 'Краткое описание (PREVIEW_TEXT)';
+        break;
+    case 'BOTH':
+        $targetLabel = 'Подробное + краткое описание';
+        break;
+    case 'PROPERTY':
+        $targetLabel = 'Свойство: ' . Options::getTargetPropertyCode();
+        break;
+    default:
+        $targetLabel = 'Подробное описание (DETAIL_TEXT)';
+}
 $customPrompt = Options::getCustomPrompt();
 
 function bsee_img_src(int $fileId, int $w = 80, int $h = 80): string

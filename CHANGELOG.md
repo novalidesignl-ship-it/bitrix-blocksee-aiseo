@@ -2,6 +2,11 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.6.1] — 2026-04-29
+
+### Исправлено
+- **Parse error на хостингах с PHP 7.4** в `admin/list.php` (строка ~119) и `admin/list_urls.php` (строка ~34). Использовалась `match()` (PHP 8.0+). Заменено на `switch/case` для совместимости с PHP 7.4. Минимальная версия PHP в `composer.json` снижена с `>=8.1` до `>=7.4`. Других PHP 8+ конструкций (`str_contains`, `?->`, named arguments, readonly, enums) в коде нет — модуль теперь работает на PHP 7.4 / 8.0 / 8.1+.
+
 ## [1.6.0] — 2026-04-29
 
 ### Изменено

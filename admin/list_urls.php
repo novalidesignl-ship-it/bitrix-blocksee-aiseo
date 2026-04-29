@@ -31,12 +31,20 @@ $APPLICATION->SetAdditionalCSS('/local/modules/blocksee.aiseo/assets/admin.css?v
 $APPLICATION->AddHeadScript('/local/modules/blocksee.aiseo/assets/list_urls.js?v=' . $jsMtime);
 
 $targetField = Options::getTargetField();
-$targetLabel = match ($targetField) {
-    'PREVIEW_TEXT' => 'Краткое описание (PREVIEW_TEXT)',
-    'BOTH' => 'Подробное + краткое описание',
-    'PROPERTY' => 'Свойство: ' . Options::getTargetPropertyCode(),
-    default => 'Подробное описание (DETAIL_TEXT)',
-};
+// switch вместо match() для совместимости с PHP 7.4.
+switch ($targetField) {
+    case 'PREVIEW_TEXT':
+        $targetLabel = 'Краткое описание (PREVIEW_TEXT)';
+        break;
+    case 'BOTH':
+        $targetLabel = 'Подробное + краткое описание';
+        break;
+    case 'PROPERTY':
+        $targetLabel = 'Свойство: ' . Options::getTargetPropertyCode();
+        break;
+    default:
+        $targetLabel = 'Подробное описание (DETAIL_TEXT)';
+}
 $customPrompt = Options::getCustomPrompt();
 ?>
 <div class="bsee-app">
