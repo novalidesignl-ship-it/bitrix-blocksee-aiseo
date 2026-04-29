@@ -2,6 +2,13 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.6.2] — 2026-04-29
+
+### Исправлено
+- **Полная совместимость PHP 7.0 — 8.x.** В v1.6.1 убрали `match()`, но в коде остались arrow functions `fn() =>` (PHP 7.4+), которые ломали работу на хостингах с PHP 7.0/7.3. Все 5 случаев заменены на обычные анонимные функции `function () use (...) { return ...; }` (синтаксис с PHP 5.3+).
+- `composer.json`: `php >= 7.0` (было 7.4). Минимальное требование — наличие null-coalescing `??` (PHP 7.0+).
+- Затронутые файлы: `admin/list.php`, `admin/reviews.php`, `lib/controller/generator.php`. Поведение не изменилось, только синтаксис.
+
 ## [1.6.1] — 2026-04-29
 
 ### Исправлено

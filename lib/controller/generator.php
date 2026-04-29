@@ -162,7 +162,7 @@ class Generator extends Controller
                 $path = '/' . trim($line, '/') . '/';
             }
             $path = '/' . trim($path, '/') . '/';
-            $segments = array_values(array_filter(explode('/', trim($path, '/')), fn($s) => $s !== ''));
+            $segments = array_values(array_filter(explode('/', trim($path, '/')), function ($s) { return $s !== ''; }));
             $code = $segments ? end($segments) : '';
             $rawList[] = ['url' => $line, 'path' => $path, 'code' => $code];
             if ($code !== '') {

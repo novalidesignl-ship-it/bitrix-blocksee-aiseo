@@ -87,9 +87,9 @@ if (!empty($items)) {
     $reviewCounts = $reviewsBackend->countsForElements($ids, $selectedIblockId);
 }
 if ($scenarioFilter === 'without_reviews') {
-    $items = array_values(array_filter($items, fn($r) => ($reviewCounts[(int)$r['ID']] ?? 0) === 0));
+    $items = array_values(array_filter($items, function ($r) use ($reviewCounts) { return ($reviewCounts[(int)$r['ID']] ?? 0) === 0; }));
 } elseif ($scenarioFilter === 'with_reviews') {
-    $items = array_values(array_filter($items, fn($r) => ($reviewCounts[(int)$r['ID']] ?? 0) > 0));
+    $items = array_values(array_filter($items, function ($r) use ($reviewCounts) { return ($reviewCounts[(int)$r['ID']] ?? 0) > 0; }));
 }
 
 $cssMtime = @filemtime($_SERVER['DOCUMENT_ROOT'] . '/local/modules/blocksee.aiseo/assets/admin.css') ?: time();
@@ -302,7 +302,7 @@ function bsee_stars(int $rating): string
             'find' => $search,
             'scenario' => $scenarioFilter,
         ]);
-        $makeUrl = fn($p) => htmlspecialcharsbx($baseUrl . '&page=' . $p);
+        $makeUrl = function ($p) use ($baseUrl) { return htmlspecialcharsbx($baseUrl . '&page=' . $p); };
         $windowSize = 5;
         $start = max(1, $page - (int)floor($windowSize / 2));
         $end = min($pageCount, $start + $windowSize - 1);

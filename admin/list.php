@@ -324,7 +324,7 @@ function bsee_get_sections(int $elementId): string
             'find' => $search,
             'scenario' => $scenarioFilter,
         ]);
-        $makeUrl = fn($p) => htmlspecialcharsbx($baseUrl . '&page=' . $p);
+        $makeUrl = function ($p) use ($baseUrl) { return htmlspecialcharsbx($baseUrl . '&page=' . $p); };
 
         $windowSize = 5;
         $start = max(1, $page - (int)floor($windowSize / 2));
