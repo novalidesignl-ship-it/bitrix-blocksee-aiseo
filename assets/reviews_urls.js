@@ -66,6 +66,30 @@
         return '<span class="bsee-item-status ' + m.cls + '">' + m.text + (extra ? ' — ' + escapeHtml(extra) : '') + '</span>';
     }
 
+    function reviewBadge(count) {
+        if (typeof count !== 'number') return '';
+        if (count === 0) {
+            return '<span class="bsee-item-status err" title="Нет отзывов">★ 0</span>';
+        }
+        return '<span class="bsee-item-status ok" title="Есть отзывы">★ ' + count + '</span>';
+    }
+
+    function isFilterActive() {
+        const cb = qs('#bsee-filter-no-reviews');
+        return !!(cb && cb.checked);
+    }
+
+    function visibleIndices() {
+        const filter = isFilterActive();
+        return resolved
+            .map(function (it, idx) {
+                if (it.status === 'not_found') return -1;
+                if (filter && typeof it.review_count === 'number' && it.review_count > 0) return -1;
+                return idx;
+            })
+            .filter(function (i) { return i >= 0; });
+    }
+
     function getReviewCount() {
         const inp = qs('#bsee-rev-count');
         const v = inp ? parseInt(inp.value, 10) : NaN;
@@ -82,8 +106,15 @@
             return;
         }
         table.style.display = '';
+        const filter = isFilterActive();
+        let displayedNum = 0;
         const rows = resolved.map((it, idx) => {
-            const num = idx + 1;
+            // фильтр «только без отзывов» — скрываем те у кого review_count > 0
+            if (filter && typeof it.review_count === 'number' && it.review_count > 0) {
+                return '';
+            }
+            displayedNum++;
+            const num = displayedNum;
             const urlCell = '<code style="font-size:11px;word-break:break-all">' + escapeHtml(it.url) + '</code>'
                 + (it.code ? '<br><small class="bsee-muted">code: ' + escapeHtml(it.code) + '</small>' : '');
             let prodCell = '';
@@ -91,7 +122,9 @@
                 const editLink = it.edit_url
                     ? '<a href="' + escapeHtml(it.edit_url) + '" target="_blank">' + escapeHtml(it.name || ('#' + it.id)) + '</a>'
                     : escapeHtml(it.name || ('#' + it.id));
-                prodCell = editLink + '<br><small class="bsee-muted">ID: ' + it.id + '</small>';
+                prodCell = editLink
+                    + '<br><small class="bsee-muted">ID: ' + it.id + '</small>'
+                    + (typeof it.review_count === 'number' ? ' &nbsp; ' + reviewBadge(it.review_count) : '');
             } else {
                 prodCell = '<span class="bsee-muted">—</span>';
             }
@@ -107,7 +140,7 @@
                 + '<td>' + statusCell + '</td>'
                 + '<td>' + actionsCell + '</td>'
                 + '</tr>';
-        }).join('');
+        }).filter(function (r) { return r !== ''; }).join('');
         tbody.innerHTML = rows;
 
         tbody.querySelectorAll('.bsee-row-generate').forEach(btn => {
@@ -116,6 +149,21 @@
                 runOne(idx, btn);
             });
         });
+
+        updateFilterCounter();
+    }
+
+    function updateFilterCounter() {
+        const counter = qs('#bsee-filter-counter');
+        if (!counter) return;
+        const found = resolved.filter(function (it) { return it.status === 'found' || it.status === 'success'; });
+        const known = found.filter(function (it) { return typeof it.review_count === 'number'; });
+        const without = known.filter(function (it) { return it.review_count === 0; }).length;
+        if (known.length === 0) {
+            counter.textContent = '';
+        } else {
+            counter.textContent = '(' + without + ' из ' + found.length + ')';
+        }
     }
 
     function setRowStatus(idx, status, error) {
@@ -189,6 +237,30 @@
                         status.textContent = `Обработано ссылок: ${total}. Найдено товаров: ${found}.`;
                     }
                     if (bulkBtn) bulkBtn.style.display = found > 0 ? '' : 'none';
+
+                    // Подгружаем количество отзывов для всех найденных товаров,
+                    // чтобы UI-фильтр «только без отзывов» мог работать.
+                    const filterWrap = qs('#bsee-filter-no-reviews-wrap');
+                    if (found === 0) {
+                        if (filterWrap) filterWrap.style.display = 'none';
+                        return;
+                    }
+                    const ids = resolved.filter(x => x.status === 'found' && x.id).map(x => x.id).join(',');
+                    if (status) status.textContent += ' Считаю отзывы...';
+                    return call('generateController', 'getReviewCounts', { ids }).then(d => {
+                        const counts = (d && d.counts) ? d.counts : {};
+                        resolved.forEach(it => {
+                            if (it.id && (it.id in counts || String(it.id) in counts)) {
+                                it.review_count = counts[it.id] !== undefined ? counts[it.id] : counts[String(it.id)];
+                            }
+                        });
+                        if (filterWrap) filterWrap.style.display = 'inline-flex';
+                        renderTable();
+                        if (status) {
+                            const without = resolved.filter(x => x.review_count === 0).length;
+                            status.textContent = `Обработано ссылок: ${total}. Найдено товаров: ${found}. Без отзывов: ${without}.`;
+                        }
+                    });
                 })
                 .catch(e => {
                     if (status) status.textContent = 'Ошибка: ' + e.message;
@@ -208,12 +280,24 @@
             .catch(e => { setRowStatus(idx, 'error', e.message); });
     }
 
+    function initFilterCheckbox() {
+        const cb = qs('#bsee-filter-no-reviews');
+        if (!cb) return;
+        cb.addEventListener('change', () => { renderTable(); });
+    }
+
     function initBulkGenerate() {
         const btn = qs('#bsee-bulk-generate-urls');
         if (!btn) return;
         btn.addEventListener('click', async () => {
+            const filter = isFilterActive();
             const indices = resolved
-                .map((it, idx) => (it.status === 'found' || it.status === 'error') && it.id ? idx : -1)
+                .map((it, idx) => {
+                    if (!((it.status === 'found' || it.status === 'error') && it.id)) return -1;
+                    // Если включён фильтр «только без отзывов» — пропускаем те у кого отзывы есть
+                    if (filter && typeof it.review_count === 'number' && it.review_count > 0) return -1;
+                    return idx;
+                })
                 .filter(i => i >= 0);
             if (!indices.length) {
                 alert('Нет найденных товаров для генерации.');
@@ -280,5 +364,6 @@
         initResolve();
         initBulkGenerate();
         initCancelButton();
+        initFilterCheckbox();
     });
 })();

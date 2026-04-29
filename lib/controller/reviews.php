@@ -112,6 +112,28 @@ class Reviews extends Controller
     }
 
     /**
+     * Возвращает количество существующих отзывов для каждого ID из списка.
+     * Используется страницей «Генерация отзывов по ссылкам» для UI-фильтра
+     * «только товары без отзывов». Принимает comma-separated список ID,
+     * возвращает массив {id: count}.
+     */
+    public function getReviewCountsAction(string $ids): ?array
+    {
+        if (!$this->requireAdmin()) return null;
+        $rawIds = array_values(array_filter(array_map('intval', explode(',', $ids)), function ($i) { return $i > 0; }));
+        if (empty($rawIds)) {
+            return ['counts' => []];
+        }
+        $rawIds = array_values(array_unique($rawIds));
+        $gen = new \Blocksee\Aiseo\ReviewsGenerator();
+        $counts = [];
+        foreach ($rawIds as $id) {
+            $counts[(string)$id] = $gen->countReviewsForElement($id);
+        }
+        return ['counts' => $counts];
+    }
+
+    /**
      * Cursor pagination over products for bulk review generation.
      * scenario: all_products | skip_with_reviews
      */
