@@ -120,15 +120,47 @@ class Reviews extends Controller
     public function getReviewCountsAction(string $ids): ?array
     {
         if (!$this->requireAdmin()) return null;
+        if (!Loader::includeModule('iblock')) {
+            $this->addError(new Error('Модуль iblock недоступен'));
+            return null;
+        }
         $rawIds = array_values(array_filter(array_map('intval', explode(',', $ids)), function ($i) { return $i > 0; }));
         if (empty($rawIds)) {
             return ['counts' => []];
         }
         $rawIds = array_values(array_unique($rawIds));
+
+        // Группируем элементы по IBLOCK_ID одним запросом, потом считаем отзывы
+        // массово через countsForElements (один JOIN-запрос на инфоблок).
+        // Для 750 товаров получаем 1-3 SQL запроса вместо 750 — критично для AJAX
+        // в админке (был баг: один long-running воркер блокировал админку).
+        $byIblock = [];
+        $rs = \CIBlockElement::GetList(
+            ['ID' => 'ASC'],
+            ['ID' => $rawIds],
+            false,
+            false,
+            ['ID', 'IBLOCK_ID']
+        );
+        while ($row = $rs->Fetch()) {
+            $iblockId = (int)$row['IBLOCK_ID'];
+            if (!isset($byIblock[$iblockId])) $byIblock[$iblockId] = [];
+            $byIblock[$iblockId][] = (int)$row['ID'];
+        }
+
         $gen = new \Blocksee\Aiseo\ReviewsGenerator();
         $counts = [];
+        foreach ($byIblock as $iblockId => $idsInIblock) {
+            $partial = $gen->countsForElements($idsInIblock, $iblockId);
+            foreach ($partial as $id => $cnt) {
+                $counts[(string)$id] = (int)$cnt;
+            }
+        }
+        // Заполняем нулями для элементов которые backend не вернул (никаких отзывов)
         foreach ($rawIds as $id) {
-            $counts[(string)$id] = $gen->countReviewsForElement($id);
+            if (!isset($counts[(string)$id])) {
+                $counts[(string)$id] = 0;
+            }
         }
         return ['counts' => $counts];
     }

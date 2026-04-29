@@ -2,6 +2,11 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.7.1] — 2026-04-29
+
+### Исправлено (срочный hotfix)
+- **`Reviews::getReviewCounts` подвешивал админку при работе с большим списком URL'ов.** В v1.7.0 action перебирал ID и для каждого вызывал `ReviewsGenerator::countReviewsForElement` — на 750 товарах это давало 750 SQL-запросов в одном HTTP-запросе. PHP-воркер сидел на этом 60+ секунд → AJAX зависал, админка казалась мёртвой. Переписал на массовый запрос: один `\CIBlockElement::GetList` для группировки по IBLOCK_ID, затем `Backend::countsForElements()` (одно JOIN-обращение на инфоблок). На 750 товарах теперь 1-3 SQL-запроса вместо 750 — выполняется ~10ms вместо минут.
+
 ## [1.7.0] — 2026-04-29
 
 ### Добавлено
