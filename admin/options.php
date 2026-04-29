@@ -97,7 +97,7 @@ if (Loader::includeModule('forum')) {
 }
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_after.php';
-$APPLICATION->SetAdditionalCSS('/local/modules/blocksee.aiseo/assets/admin.css');
+$APPLICATION->SetAdditionalCSS(Options::getAssetUrl('/assets/admin.css'));
 ?>
 <?php if ($saved): ?>
     <div class="adm-info-message-wrap adm-info-message-green">

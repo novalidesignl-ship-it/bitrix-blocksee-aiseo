@@ -95,10 +95,12 @@ while ($row = $rs->Fetch()) {
 $totalCount = (int)$rs->SelectedRowsCount();
 $pageCount = max(1, (int)ceil($totalCount / $pageSize));
 
-$cssMtime = @filemtime($_SERVER['DOCUMENT_ROOT'] . '/local/modules/blocksee.aiseo/assets/admin.css') ?: time();
-$jsMtime = @filemtime($_SERVER['DOCUMENT_ROOT'] . '/local/modules/blocksee.aiseo/assets/admin.js') ?: time();
-$APPLICATION->SetAdditionalCSS('/local/modules/blocksee.aiseo/assets/admin.css?v=' . $cssMtime);
-$APPLICATION->AddHeadScript('/local/modules/blocksee.aiseo/assets/admin.js?v=' . $jsMtime);
+$assetCss = Options::getAssetUrl('/assets/admin.css');
+$assetJs = Options::getAssetUrl('/assets/admin.js');
+$cssMtime = @filemtime($_SERVER['DOCUMENT_ROOT'] . $assetCss) ?: time();
+$jsMtime = @filemtime($_SERVER['DOCUMENT_ROOT'] . $assetJs) ?: time();
+$APPLICATION->SetAdditionalCSS($assetCss . '?v=' . $cssMtime);
+$APPLICATION->AddHeadScript($assetJs . '?v=' . $jsMtime);
 
 // Sections for toolbar + modal
 $sections = [];

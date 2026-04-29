@@ -25,10 +25,12 @@ $APPLICATION->SetTitle('БЛОКСИ: ИИ SEO — Генерация отзыв
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_after.php';
 
-$cssMtime = @filemtime($_SERVER['DOCUMENT_ROOT'] . '/local/modules/blocksee.aiseo/assets/admin.css') ?: time();
-$jsMtime = @filemtime($_SERVER['DOCUMENT_ROOT'] . '/local/modules/blocksee.aiseo/assets/reviews_urls.js') ?: time();
-$APPLICATION->SetAdditionalCSS('/local/modules/blocksee.aiseo/assets/admin.css?v=' . $cssMtime);
-$APPLICATION->AddHeadScript('/local/modules/blocksee.aiseo/assets/reviews_urls.js?v=' . $jsMtime);
+$assetCss = Options::getAssetUrl('/assets/admin.css');
+$assetJs = Options::getAssetUrl('/assets/reviews_urls.js');
+$cssMtime = @filemtime($_SERVER['DOCUMENT_ROOT'] . $assetCss) ?: time();
+$jsMtime = @filemtime($_SERVER['DOCUMENT_ROOT'] . $assetJs) ?: time();
+$APPLICATION->SetAdditionalCSS($assetCss . '?v=' . $cssMtime);
+$APPLICATION->AddHeadScript($assetJs . '?v=' . $jsMtime);
 
 $reviewsPerProduct = Options::getReviewsPerProduct();
 $reviewsSettings = Options::getReviewsSettings();

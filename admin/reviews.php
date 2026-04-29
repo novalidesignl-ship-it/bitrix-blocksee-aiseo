@@ -92,10 +92,12 @@ if ($scenarioFilter === 'without_reviews') {
     $items = array_values(array_filter($items, function ($r) use ($reviewCounts) { return ($reviewCounts[(int)$r['ID']] ?? 0) > 0; }));
 }
 
-$cssMtime = @filemtime($_SERVER['DOCUMENT_ROOT'] . '/local/modules/blocksee.aiseo/assets/admin.css') ?: time();
-$jsMtime = @filemtime($_SERVER['DOCUMENT_ROOT'] . '/local/modules/blocksee.aiseo/assets/reviews.js') ?: time();
-$APPLICATION->SetAdditionalCSS('/local/modules/blocksee.aiseo/assets/admin.css?v=' . $cssMtime);
-$APPLICATION->AddHeadScript('/local/modules/blocksee.aiseo/assets/reviews.js?v=' . $jsMtime);
+$assetCss = Options::getAssetUrl('/assets/admin.css');
+$assetJs = Options::getAssetUrl('/assets/reviews.js');
+$cssMtime = @filemtime($_SERVER['DOCUMENT_ROOT'] . $assetCss) ?: time();
+$jsMtime = @filemtime($_SERVER['DOCUMENT_ROOT'] . $assetJs) ?: time();
+$APPLICATION->SetAdditionalCSS($assetCss . '?v=' . $cssMtime);
+$APPLICATION->AddHeadScript($assetJs . '?v=' . $jsMtime);
 
 $sections = [];
 if ($selectedIblockId > 0) {

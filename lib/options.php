@@ -170,6 +170,40 @@ class Options
         return $cache[$iblockId];
     }
 
+    /**
+     * Возвращает URL-префикс модуля (/local/modules/blocksee.aiseo или
+     * /bitrix/modules/blocksee.aiseo) в зависимости от того, куда модуль реально
+     * установлен. Нужно для корректной отдачи CSS/JS на хостингах разных типов.
+     *
+     * Кешируется в статике — определяется один раз за процесс.
+     */
+    public static function getModuleUrlPrefix(): string
+    {
+        static $prefix = null;
+        if ($prefix !== null) return $prefix;
+        $docRoot = (string)$_SERVER['DOCUMENT_ROOT'];
+        // Сначала проверяем local/ (приоритет для dev/локальных установок),
+        // потом bitrix/modules/ (стандартное место Marketplace).
+        if ($docRoot !== '' && file_exists($docRoot . '/local/modules/blocksee.aiseo/include.php')) {
+            $prefix = '/local/modules/blocksee.aiseo';
+        } else {
+            $prefix = '/bitrix/modules/blocksee.aiseo';
+        }
+        return $prefix;
+    }
+
+    /**
+     * Полный URL до файла внутри модуля (относительно DOCUMENT_ROOT).
+     * Пример: Options::getAssetUrl('/assets/admin.css') →
+     *   '/local/modules/blocksee.aiseo/assets/admin.css' либо
+     *   '/bitrix/modules/blocksee.aiseo/assets/admin.css'
+     */
+    public static function getAssetUrl(string $relPath): string
+    {
+        $rel = '/' . ltrim($relPath, '/');
+        return self::getModuleUrlPrefix() . $rel;
+    }
+
     public static function buildElementEditUrl(int $iblockId, int $elementId, string $lang = 'ru'): string
     {
         $type = self::getIblockTypeId($iblockId) ?: 'catalog';

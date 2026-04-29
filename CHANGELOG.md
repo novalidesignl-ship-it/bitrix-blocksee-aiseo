@@ -2,6 +2,13 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.6.5] — 2026-04-29
+
+### Исправлено
+- **CSS/JS не загружались на хостингах с модулем в `/bitrix/modules/`** (а не в `/local/modules/`). На таких установках админ-страницы рендерились без стилей. Причина: пути ассетов были зашиты как `/local/modules/blocksee.aiseo/assets/...` в 5 файлах admin/*.php.
+- Добавлен helper `Options::getAssetUrl(string $relPath)` — автоопределяет, где модуль установлен (наличие `include.php` в `/local/modules/...` или `/bitrix/modules/...`), возвращает корректный URL. Кешируется в статике, проверка срабатывает один раз за процесс.
+- Все 5 admin-файлов (`list`, `list_urls`, `reviews`, `reviews_urls`, `options`) теперь используют helper. Stub-файлы `install/admin/*` уже умели работать с обоими путями — там без изменений.
+
 ## [1.6.4] — 2026-04-29
 
 ### Исправлено
