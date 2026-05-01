@@ -84,7 +84,7 @@ class blocksee_aiseo extends CModule
     public function uninstallFiles()
     {
         $docRoot = Application::getDocumentRoot();
-        foreach (['blocksee_aiseo_list.php', 'blocksee_aiseo_list_urls.php', 'blocksee_aiseo_options.php', 'blocksee_aiseo_reviews.php', 'blocksee_aiseo_reviews_urls.php'] as $f) {
+        foreach (['blocksee_aiseo_list.php', 'blocksee_aiseo_list_urls.php', 'blocksee_aiseo_options.php', 'blocksee_aiseo_reviews.php', 'blocksee_aiseo_reviews_urls.php', 'blocksee_aiseo_categories.php'] as $f) {
             $path = $docRoot . '/bitrix/admin/' . $f;
             if (file_exists($path)) {
                 @unlink($path);

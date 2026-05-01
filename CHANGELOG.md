@@ -2,6 +2,14 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.8.0] — 2026-04-27
+
+### Добавлено
+- **Генерация описаний для категорий каталога.** Новый раздел в меню — «Описания категорий» (`/bitrix/admin/blocksee_aiseo_categories.php`). Список секций инфоблока с фильтрами (инфоблок / статус «есть описание / без описания» / поиск по названию), пагинацией, одиночными кнопками «Сгенерировать» / «Сохранить» в строке и bulk-операциями по чекбоксам. Сохраняет результат в `b_iblock_section.DESCRIPTION` (`DESCRIPTION_TYPE = 'html'`).
+- Сборщик контекста секции `CategoryGenerator::collectSectionData()` — кладёт в payload название, родителя, число товаров с подсекциями, имена подкатегорий, 5 примеров товаров и до 5 общих свойств (с распределением значений по выборке из 10 элементов). Вызывает серверный action `generate_category_description` на `lk.blocksee.ru/api.php`.
+- Новый контроллер `Blocksee\Aiseo\Controller\Category` с actions `generate`, `save`, `generateAndSave`, `listNextChunk`. Курсорная пагинация по `>ID = afterId` с опциональным фильтром «empty_only» — пригодится для будущей bulk-обработки больших каталогов.
+- В `generate`/`generateAndSave` сразу после `$USER->IsAdmin()` вызывается `releaseSessionLock()` — иначе один долгий запрос на 30 секунд блокировал бы весь фронт того же админа из-за Bitrix session lock (см. v1.7.2).
+
 ## [1.7.2] — 2026-04-29
 
 ### Исправлено (критично)

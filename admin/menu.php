@@ -32,6 +32,12 @@ return [
             'title' => Loc::getMessage('BLOCKSEE_AISEO_MENU_REVIEWS_TITLE') ?: 'Генерация отзывов',
         ],
         [
+            'text' => Loc::getMessage('BLOCKSEE_AISEO_MENU_CATEGORIES') ?: 'Описания категорий',
+            'url' => 'blocksee_aiseo_categories.php?lang=' . LANGUAGE_ID,
+            'more_url' => [],
+            'title' => Loc::getMessage('BLOCKSEE_AISEO_MENU_CATEGORIES_TITLE') ?: 'Генерация описаний для категорий каталога',
+        ],
+        [
             'text' => Loc::getMessage('BLOCKSEE_AISEO_MENU_OPTIONS') ?: 'Настройки',
             'url' => 'blocksee_aiseo_options.php?lang=' . LANGUAGE_ID,
             'more_url' => [],
