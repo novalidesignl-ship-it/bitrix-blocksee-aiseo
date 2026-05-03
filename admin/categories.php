@@ -64,7 +64,7 @@ $rs = \CIBlockSection::GetList(
     ['LEFT_MARGIN' => 'ASC'],
     $filter,
     true,
-    ['ID', 'NAME', 'IBLOCK_ID', 'DESCRIPTION', 'DEPTH_LEVEL', 'IBLOCK_SECTION_ID', 'ELEMENT_CNT', 'PICTURE'],
+    ['ID', 'NAME', 'CODE', 'EXTERNAL_ID', 'IBLOCK_ID', 'IBLOCK_CODE', 'IBLOCK_EXTERNAL_ID', 'DESCRIPTION', 'DEPTH_LEVEL', 'IBLOCK_SECTION_ID', 'ELEMENT_CNT', 'PICTURE', 'SECTION_PAGE_URL'],
     ['iNumPage' => $page, 'nPageSize' => $pageSize]
 );
 
@@ -195,6 +195,15 @@ function bsee_cat_edit_url(int $iblockId, int $sectionId): string
                 $prefix = str_repeat('— ', $depth - 1);
                 $cnt = (int)($item['ELEMENT_CNT'] ?? 0);
                 $currentDesc = (string)$item['DESCRIPTION'];
+                // SECTION_PAGE_URL приходит как сырой шаблон (#SITE_DIR#/catalog/#SECTION_CODE#/),
+                // \CIBlockSection::GetList не подставляет плейсхолдеры. Резолвим через
+                // CIBlock::ReplaceDetailUrl — он сам обрабатывает #SECTION_CODE#, #SECTION_CODE_PATH#,
+                // #SITE_DIR#, #IBLOCK_CODE#, #EXTERNAL_ID# и т.п. (тип 'S' — секция).
+                $urlTemplate = (string)($item['SECTION_PAGE_URL'] ?? '');
+                $frontendUrl = $urlTemplate !== ''
+                    ? \CIBlock::ReplaceDetailUrl($urlTemplate, $item, false, 'S')
+                    : '';
+                $frontendUrl = trim((string)$frontendUrl);
             ?>
                 <tr data-section-id="<?= $sectionId ?>">
                     <td class="bsee-cell-check">
@@ -223,6 +232,9 @@ function bsee_cat_edit_url(int $iblockId, int $sectionId): string
                     <td class="bsee-cell-actions">
                         <button type="button" class="bsee-btn bsee-btn-small bsee-btn-primary bsee-generate-btn" data-id="<?= $sectionId ?>">Сгенерировать</button>
                         <button type="button" class="bsee-btn bsee-btn-small bsee-save-btn" data-id="<?= $sectionId ?>">Сохранить</button>
+                        <?php if ($frontendUrl): ?>
+                            <a class="bsee-btn bsee-btn-small bsee-btn-ghost" href="<?= htmlspecialcharsbx($frontendUrl) ?>" target="_blank" rel="noopener" title="Открыть категорию на сайте в новой вкладке">↗ На сайте</a>
+                        <?php endif; ?>
                     </td>
                 </tr>
             <?php endforeach; ?>
