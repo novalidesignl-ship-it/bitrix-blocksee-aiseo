@@ -204,6 +204,13 @@ function bsee_cat_edit_url(int $iblockId, int $sectionId): string
                     ? \CIBlock::ReplaceDetailUrl($urlTemplate, $item, false, 'S')
                     : '';
                 $frontendUrl = trim((string)$frontendUrl);
+                // На некоторых конфигурациях URL-шаблона (например, без префикса #SITE_DIR#)
+                // ReplaceDetailUrl возвращает относительный путь вида `catalog/section/`.
+                // Из админки `/bitrix/admin/...` такой относительный URL разрешается некорректно
+                // (браузер дописывает его к admin-пути) — принудительно добавляем leading slash.
+                if ($frontendUrl !== '' && $frontendUrl[0] !== '/' && !preg_match('~^https?://~i', $frontendUrl)) {
+                    $frontendUrl = '/' . ltrim($frontendUrl, '/');
+                }
             ?>
                 <tr data-section-id="<?= $sectionId ?>">
                     <td class="bsee-cell-check">
