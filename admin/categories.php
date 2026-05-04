@@ -225,6 +225,9 @@ function bsee_cat_edit_url(int $iblockId, int $sectionId): string
                     </td>
                     <td class="bsee-cell-info">
                         <a class="bsee-item-name" href="<?= htmlspecialcharsbx($editUrl) ?>" target="_blank"><?= htmlspecialcharsbx($prefix . $item['NAME']) ?></a>
+                        <?php if ($frontendUrl): ?>
+                            <a class="bsee-item-frontend" href="<?= htmlspecialcharsbx($frontendUrl) ?>" target="_blank" rel="noopener" title="Открыть категорию на сайте в новой вкладке">↗ Просмотр на сайте</a>
+                        <?php endif; ?>
                         <div class="bsee-item-meta">
                             <span class="bsee-item-id">#<?= $sectionId ?></span>
                             <span class="bsee-item-sections">Товаров: <?= $cnt ?></span>
@@ -239,9 +242,6 @@ function bsee_cat_edit_url(int $iblockId, int $sectionId): string
                     <td class="bsee-cell-actions">
                         <button type="button" class="bsee-btn bsee-btn-small bsee-btn-primary bsee-generate-btn" data-id="<?= $sectionId ?>">Сгенерировать</button>
                         <button type="button" class="bsee-btn bsee-btn-small bsee-save-btn" data-id="<?= $sectionId ?>">Сохранить</button>
-                        <?php if ($frontendUrl): ?>
-                            <a class="bsee-btn bsee-btn-small bsee-btn-ghost" href="<?= htmlspecialcharsbx($frontendUrl) ?>" target="_blank" rel="noopener" title="Открыть категорию на сайте в новой вкладке">↗ На сайте</a>
-                        <?php endif; ?>
                     </td>
                 </tr>
             <?php endforeach; ?>

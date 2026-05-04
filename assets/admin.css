@@ -264,6 +264,8 @@
 .bsee-cell-info { line-height: 1.5; }
 .bsee-item-name { color: var(--bsee-text); font-weight: 600; text-decoration: none; font-size: 13px; display: block; margin-bottom: 4px; }
 .bsee-item-name:hover { color: var(--bsee-primary); }
+.bsee-item-frontend { display: inline-block; font-size: 11px; color: var(--bsee-primary); text-decoration: none; margin-bottom: 6px; }
+.bsee-item-frontend:hover { text-decoration: underline; color: var(--bsee-primary-hover); }
 .bsee-item-meta { font-size: 11px; color: var(--bsee-text-soft); margin-bottom: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
 .bsee-item-id { font-family: SFMono-Regular, Consolas, monospace; background: #f3f5f8; padding: 1px 6px; border-radius: 3px; }
 .bsee-item-sections { font-style: italic; }
