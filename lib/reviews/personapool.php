@@ -102,8 +102,11 @@ class PersonaPool
     {
         if (!$ids) return [];
         $alive = [];
+        // by/order через переменные — на PHP 8+ literal strings в byref = fatal.
+        $by = 'ID';
+        $order = 'ASC';
         $rs = \CUser::GetList(
-            'ID', 'ASC',
+            $by, $order,
             ['ID' => implode('|', array_map('intval', $ids))],
             ['FIELDS' => ['ID']]
         );

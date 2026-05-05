@@ -2,6 +2,11 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.9.1] — 2026-05-05
+
+### Исправлено (критично, PHP 8+)
+- Пропущенный кейс из v1.8.4 — `personapool.php::filterAlive()`. Ещё один вызов `\CUser::GetList('ID', 'ASC', ...)` с literal strings в by-ref параметрах. На PHP 8+ это fatal «Only variables can be passed by reference», который **выбивает любой ajax-action генерации отзывов** в `<br><b>Fatal error</b>...` HTML — клиент получает невалидный JSON и падает с «Unexpected token '<'». Заменил literals на переменные. На euro-komplekt отзывы теперь генерируются.
+
 ## [1.9.0] — 2026-05-05
 
 ### Изменено
