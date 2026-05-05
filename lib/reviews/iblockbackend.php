@@ -34,8 +34,16 @@ class IblockBackend implements Backend
         'RATING_VALUE',
         'STARS',
     ];
+    /** Кандидаты на код свойства «ФИО автора» внутри инфоблока отзывов. */
+    private const AUTHOR_PROP_CANDIDATES = [
+        'TITLE',          // Aspro Max: "ФИО кто оставил отзыв"
+        'AUTHOR',
+        'AUTHOR_NAME',
+        'FIO',
+        'NAME',           // встречается у некоторых сборок как property
+    ];
 
-    /** @var array<int,?array{link_prop_code:string,reviews_iblock:int,rating_prop_code:string}> */
+    /** @var array<int,?array{link_prop_code:string,reviews_iblock:int,rating_prop_code:string,author_prop_code:string}> */
     private static $structureCache = [];
 
     public function isAvailable(): bool
@@ -44,10 +52,10 @@ class IblockBackend implements Backend
     }
 
     /**
-     * Возвращает структуру (link_prop_code/reviews_iblock/rating_prop_code) для
-     * указанного товарного инфоблока. null = backend на этом инфоблоке не работает.
+     * Возвращает структуру для указанного товарного инфоблока.
+     * null = backend на этом инфоблоке не работает.
      *
-     * @return array{link_prop_code:string,reviews_iblock:int,rating_prop_code:string}|null
+     * @return array{link_prop_code:string,reviews_iblock:int,rating_prop_code:string,author_prop_code:string}|null
      */
     public function detectStructure(int $catalogIblockId): ?array
     {
@@ -82,24 +90,34 @@ class IblockBackend implements Backend
             return self::$structureCache[$catalogIblockId] = null;
         }
 
+        // Берём все свойства инфоблока отзывов одним запросом, потом матчим
+        // под кандидатов в нужном порядке. Это надёжнее раздельных запросов
+        // по filter:CODE — Bitrix фильтрует через IN, а нам нужен приоритет.
+        $allProps = [];
+        $rsP = \Bitrix\Iblock\PropertyTable::getList([
+            'select' => ['CODE', 'PROPERTY_TYPE'],
+            'filter' => ['=IBLOCK_ID' => $reviewsIblockId, '=ACTIVE' => 'Y'],
+        ]);
+        while ($p = $rsP->fetch()) {
+            $allProps[$p['CODE']] = $p['PROPERTY_TYPE'];
+        }
+
         $ratingCode = 'RATING';
-        $ratingRow = \Bitrix\Iblock\PropertyTable::getList([
-            'select' => ['CODE'],
-            'filter' => [
-                '=IBLOCK_ID' => $reviewsIblockId,
-                '=CODE' => self::RATING_PROP_CANDIDATES,
-                '=ACTIVE' => 'Y',
-            ],
-            'limit' => 1,
-        ])->fetch();
-        if ($ratingRow) {
-            $ratingCode = (string)$ratingRow['CODE'];
+        foreach (self::RATING_PROP_CANDIDATES as $cand) {
+            if (isset($allProps[$cand])) { $ratingCode = $cand; break; }
+        }
+        $authorCode = '';
+        foreach (self::AUTHOR_PROP_CANDIDATES as $cand) {
+            // Берём только string-свойство ('S'), чтобы не попасть на NAME-имя
+            // элемента (его формально в b_iblock_property нет, но на всякий случай).
+            if (isset($allProps[$cand]) && $allProps[$cand] === 'S') { $authorCode = $cand; break; }
         }
 
         return self::$structureCache[$catalogIblockId] = [
             'link_prop_code' => $linkCode,
             'reviews_iblock' => $reviewsIblockId,
             'rating_prop_code' => $ratingCode,
+            'author_prop_code' => $authorCode,
         ];
     }
 
@@ -168,18 +186,30 @@ class IblockBackend implements Backend
 
         $reviewIds = array_slice($reviewIds, 0, max(1, $limit));
         $ratingCode = $struct['rating_prop_code'];
+        $authorCode = $struct['author_prop_code'];
+        $select = ['ID', 'NAME', 'DETAIL_TEXT', 'DATE_CREATE', 'PROPERTY_' . $ratingCode];
+        if ($authorCode !== '') {
+            $select[] = 'PROPERTY_' . $authorCode;
+        }
         $rs = \CIBlockElement::GetList(
             ['DATE_CREATE' => 'DESC'],
             ['IBLOCK_ID' => $struct['reviews_iblock'], 'ID' => $reviewIds],
             false,
             false,
-            ['ID', 'NAME', 'DETAIL_TEXT', 'DATE_CREATE', 'PROPERTY_' . $ratingCode]
+            $select
         );
         $out = [];
         while ($r = $rs->Fetch()) {
+            // Имя — из свойства (Aspro Max-style), иначе из NAME элемента
+            $author = '';
+            if ($authorCode !== '' && !empty($r['PROPERTY_' . $authorCode . '_VALUE'])) {
+                $author = (string)$r['PROPERTY_' . $authorCode . '_VALUE'];
+            } else {
+                $author = (string)$r['NAME'];
+            }
             $out[] = [
                 'id' => (int)$r['ID'],
-                'author_name' => (string)$r['NAME'],
+                'author_name' => $author,
                 'content' => (string)$r['DETAIL_TEXT'],
                 'rating' => (int)($r['PROPERTY_' . $ratingCode . '_VALUE'] ?? 0),
                 'date' => (string)$r['DATE_CREATE'],
@@ -208,6 +238,7 @@ class IblockBackend implements Backend
         $reviewsIblock = $struct['reviews_iblock'];
         $linkCode = $struct['link_prop_code'];
         $ratingCode = $struct['rating_prop_code'];
+        $authorCode = $struct['author_prop_code'];
         $autoApprove = !empty($opts['auto_approve']);
 
         $createdIds = [];
@@ -218,13 +249,22 @@ class IblockBackend implements Backend
             $rating = max(1, min(5, (int)($r['rating'] ?? 5)));
             if ($author === '' || $content === '') continue;
 
+            // PROPERTY_VALUES: имя автора кладём в свойство-кандидат (TITLE/AUTHOR/...),
+            // если оно есть в инфоблоке. NAME элемента дублируем именем — оно нужно
+            // для админки (список элементов покажет ФИО), но шаблон Aspro Max
+            // отображает автора именно из свойства.
+            $propValues = [$ratingCode => $rating];
+            if ($authorCode !== '') {
+                $propValues[$authorCode] = $author;
+            }
+
             $newId = $cie->Add([
                 'IBLOCK_ID' => $reviewsIblock,
                 'NAME' => $author,
                 'ACTIVE' => $autoApprove ? 'Y' : 'N',
                 'DETAIL_TEXT' => $content,
                 'DETAIL_TEXT_TYPE' => 'text',
-                'PROPERTY_VALUES' => [$ratingCode => $rating],
+                'PROPERTY_VALUES' => $propValues,
             ]);
             if ($newId) {
                 $createdIds[] = (int)$newId;
@@ -283,16 +323,27 @@ class IblockBackend implements Backend
         if (!$ok) {
             return ['success' => false, 'error' => $cie->LAST_ERROR ?: 'Ошибка обновления'];
         }
-        // Свойство rating обновим отдельно. Код свойства храним под детектом
-        // по IBLOCK_ID отзыва.
+        // Свойства rating + author подбираем отдельным запросом по инфоблоку
+        // отзывов (мы не знаем catalogIblockId здесь, используем IBLOCK_ID отзыва).
         $ratingCode = 'RATING';
-        $rp = \Bitrix\Iblock\PropertyTable::getList([
-            'select' => ['CODE'],
-            'filter' => ['=IBLOCK_ID' => $iblockId, '=CODE' => self::RATING_PROP_CANDIDATES, '=ACTIVE' => 'Y'],
-            'limit' => 1,
-        ])->fetch();
-        if ($rp) $ratingCode = (string)$rp['CODE'];
-        \CIBlockElement::SetPropertyValuesEx($messageId, $iblockId, [$ratingCode => $rating]);
+        $authorCode = '';
+        $rsP = \Bitrix\Iblock\PropertyTable::getList([
+            'select' => ['CODE', 'PROPERTY_TYPE'],
+            'filter' => ['=IBLOCK_ID' => $iblockId, '=ACTIVE' => 'Y'],
+        ]);
+        $allProps = [];
+        while ($p = $rsP->fetch()) $allProps[$p['CODE']] = $p['PROPERTY_TYPE'];
+        foreach (self::RATING_PROP_CANDIDATES as $cand) {
+            if (isset($allProps[$cand])) { $ratingCode = $cand; break; }
+        }
+        foreach (self::AUTHOR_PROP_CANDIDATES as $cand) {
+            if (isset($allProps[$cand]) && $allProps[$cand] === 'S') { $authorCode = $cand; break; }
+        }
+        $propValues = [$ratingCode => $rating];
+        if ($authorCode !== '') {
+            $propValues[$authorCode] = $author;
+        }
+        \CIBlockElement::SetPropertyValuesEx($messageId, $iblockId, $propValues);
         return ['success' => true];
     }
 
