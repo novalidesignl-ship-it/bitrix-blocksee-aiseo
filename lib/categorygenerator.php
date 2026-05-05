@@ -228,6 +228,11 @@ class CategoryGenerator
             return ['success' => false, 'error' => 'API returned empty description'];
         }
         $description = TextSanitizer::stripEmoji($description);
+        // AI часто возвращает текст с <h2> + «голыми» абзацами без <p>-обёртки.
+        // На фронте Aspro Premier такой контент склеивается в одну строку.
+        // wrapParagraphs() оборачивает абзацы в <p>, заголовки/списки оставляет
+        // как есть. Идемпотентно — если ответ уже содержит <p>, ничего не меняет.
+        $description = TextSanitizer::wrapParagraphs($description);
 
         return ['success' => true, 'description' => $description];
     }
@@ -241,6 +246,10 @@ class CategoryGenerator
     {
         $sectionId = (int)$sectionId;
         $description = TextSanitizer::stripEmoji(trim((string)$description));
+        // Защита для случаев, когда description приходит из textarea-редактора
+        // в админке (после ручной правки) и не содержит <p> — оборачиваем сами,
+        // чтобы фронт-шаблон не получал «склеенный» текст.
+        $description = TextSanitizer::wrapParagraphs($description);
         if ($sectionId <= 0) return ['success' => false, 'error' => 'Некорректный ID'];
         if ($description === '') return ['success' => false, 'error' => 'Описание пустое'];
 
