@@ -359,11 +359,32 @@
         });
     }
 
+    function initSourceQuickSelector() {
+        const sel = qs('#bsee-source-quick');
+        const status = qs('#bsee-source-status');
+        if (!sel) return;
+        sel.addEventListener('change', () => {
+            sel.disabled = true;
+            if (status) status.textContent = 'Сохраняю…';
+            // setSource живёт в основном контроллере отзывов
+            call('reviewsController', 'setSource', { source: sel.value })
+                .then(() => {
+                    if (status) status.textContent = '✓ ';
+                    setTimeout(() => window.location.reload(), 600);
+                })
+                .catch(e => {
+                    sel.disabled = false;
+                    alert('Ошибка смены источника: ' + e.message);
+                });
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         initPromptSave();
         initResolve();
         initBulkGenerate();
         initCancelButton();
         initFilterCheckbox();
+        initSourceQuickSelector();
     });
 })();
