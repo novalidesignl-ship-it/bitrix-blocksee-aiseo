@@ -15,6 +15,9 @@ class Factory
         if ($source === Options::REVIEWS_SOURCE_FORUM) {
             return new ForumBackend();
         }
+        if ($source === Options::REVIEWS_SOURCE_IBLOCK) {
+            return new IblockBackend();
+        }
         return null;
     }
 

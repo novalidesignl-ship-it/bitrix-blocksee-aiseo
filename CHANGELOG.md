@@ -2,6 +2,15 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.9.4] — 2026-05-05
+
+### Добавлено
+- **Третий backend для отзывов: «Кастомный инфоблок» (Aspro Max и совместимые)**. Aspro Max не использует blog/forum — он держит отзывы в собственном инфоблоке (на euro-komplekt это IBLOCK_ID=37) и привязывает к товарам через свойство-связь `PRODUCT_REVIEWS`. Раньше наш модуль писал в blog/forum, и эти отзывы не появлялись на фронте Aspro Max.
+- Новый класс `Blocksee\Aiseo\Reviews\IblockBackend` — детектит структуру **автоматически** (никаких хардкод ID): ищет на товарном инфоблоке свойство-связь типа `E` с кодом `PRODUCT_REVIEWS` / `LINK_REVIEWS` / `REVIEWS`, по `LINK_IBLOCK_ID` находит инфоблок отзывов, в нём находит RATING-свойство (`RATING` / `STARS` / `RATING_VALUE`). Создаёт элементы (`NAME` = автор, `DETAIL_TEXT` = текст, `PROPERTY_RATING` = оценка) и привязывает к товару через `SetPropertyValuesEx`.
+- В настройках модуля (`Options`) добавлена опция `REVIEWS_SOURCE_IBLOCK = 'iblock'`. В `Factory::create()` возвращается `IblockBackend`.
+- На странице «Отзывы товаров» в шапке — **quick-селектор** «Куда сохранять» (форум / блог / кастомный инфоблок / авто). Меняет источник без захода в общие настройки модуля. Реализован через новый AJAX-action `Reviews::setSourceAction`.
+- В общих настройках модуля (`admin/options.php`) — новая опция в селекторе источника. С текстовой подсказкой когда использовать каждый.
+
 ## [1.9.3] — 2026-05-05
 
 ### Исправлено

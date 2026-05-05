@@ -11,6 +11,7 @@ class Options
     public const REVIEWS_SOURCE_AUTO = 'auto';
     public const REVIEWS_SOURCE_FORUM = 'forum';
     public const REVIEWS_SOURCE_BLOG = 'blog';
+    public const REVIEWS_SOURCE_IBLOCK = 'iblock';
     public const REVIEWS_BLOG_URL_DEFAULT = 'catalog_comments';
 
     public static function get(string $key, $default = '')
@@ -213,9 +214,8 @@ class Options
     public static function getReviewsSource(): string
     {
         $val = (string)self::get('reviews_source', self::REVIEWS_SOURCE_AUTO);
-        return in_array($val, [self::REVIEWS_SOURCE_FORUM, self::REVIEWS_SOURCE_BLOG], true)
-            ? $val
-            : self::REVIEWS_SOURCE_AUTO;
+        $allowed = [self::REVIEWS_SOURCE_FORUM, self::REVIEWS_SOURCE_BLOG, self::REVIEWS_SOURCE_IBLOCK];
+        return in_array($val, $allowed, true) ? $val : self::REVIEWS_SOURCE_AUTO;
     }
 
     public static function getReviewsBlogUrl(): string
@@ -236,6 +236,11 @@ class Options
     public static function resolveReviewsSource(): string
     {
         $configured = self::getReviewsSource();
+        if ($configured === self::REVIEWS_SOURCE_IBLOCK) {
+            // iblock backend всегда доступен пока активен модуль iblock —
+            // структуру он сам детектит на конкретном товарном инфоблоке.
+            return self::REVIEWS_SOURCE_IBLOCK;
+        }
         if ($configured === self::REVIEWS_SOURCE_FORUM) {
             return \Bitrix\Main\ModuleManager::isModuleInstalled('forum')
                 ? self::REVIEWS_SOURCE_FORUM
@@ -246,7 +251,9 @@ class Options
                 ? self::REVIEWS_SOURCE_BLOG
                 : '';
         }
-        // auto
+        // auto: приоритет blog > forum. Iblock backend в auto не выбираем —
+        // он специфичен под Aspro Max и подобные сборки, требует явного
+        // выбора в настройках, чтобы не сюрпризить других клиентов.
         if (\Bitrix\Main\ModuleManager::isModuleInstalled('blog')) {
             return self::REVIEWS_SOURCE_BLOG;
         }

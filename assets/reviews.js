@@ -509,10 +509,34 @@
         });
     }
 
+    function initSourceQuickSelector() {
+        const sel = qs('#bsee-source-quick');
+        const status = qs('#bsee-source-status');
+        if (!sel) return;
+        sel.addEventListener('change', () => {
+            const newSource = sel.value;
+            sel.disabled = true;
+            if (status) status.textContent = 'Сохраняю…';
+            call('setSource', { source: newSource })
+                .then(data => {
+                    if (status) {
+                        status.textContent = '✓ ';
+                        status.classList.add('bsee-flash-ok');
+                    }
+                    setTimeout(() => window.location.reload(), 600);
+                })
+                .catch(e => {
+                    sel.disabled = false;
+                    alert('Ошибка смены источника: ' + e.message);
+                });
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         initPromptSave();
         initRowActions();
         initViewer();
         initScenarioModal();
+        initSourceQuickSelector();
     });
 })();

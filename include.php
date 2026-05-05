@@ -34,6 +34,7 @@ Loader::registerAutoLoadClasses(
         'Blocksee\\Aiseo\\Reviews\\Backend' => 'lib/reviews/backend.php',
         'Blocksee\\Aiseo\\Reviews\\ForumBackend' => 'lib/reviews/forumbackend.php',
         'Blocksee\\Aiseo\\Reviews\\BlogBackend' => 'lib/reviews/blogbackend.php',
+        'Blocksee\\Aiseo\\Reviews\\IblockBackend' => 'lib/reviews/iblockbackend.php',
         'Blocksee\\Aiseo\\Reviews\\Factory' => 'lib/reviews/factory.php',
         'Blocksee\\Aiseo\\Reviews\\Scenarios' => 'lib/reviews/scenarios.php',
         'Blocksee\\Aiseo\\Reviews\\PersonaPool' => 'lib/reviews/personapool.php',

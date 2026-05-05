@@ -137,20 +137,15 @@ function bsee_stars(int $rating): string
     <div class="bsee-header-bar">
         <div class="bsee-header-info">
             <div class="bsee-header-target">
-                <span class="bsee-label">Источник отзывов:</span>
-                <?php
-                    $src = Options::resolveReviewsSource();
-                    if ($src === Options::REVIEWS_SOURCE_BLOG) {
-                        $blogId = Options::getReviewsBlogId();
-                        echo '<b>Блог «' . htmlspecialcharsbx(Options::getReviewsBlogUrl()) . '»'
-                           . ($blogId > 0 ? ' · ID ' . $blogId : '') . '</b>';
-                    } elseif ($src === Options::REVIEWS_SOURCE_FORUM) {
-                        $forumId = Options::getReviewsForumId();
-                        echo '<b>Форум' . ($forumId > 0 ? ' ID ' . $forumId : ' (не задан)') . '</b>';
-                    } else {
-                        echo '<b style="color:#dc2626;">не настроен</b>';
-                    }
-                ?>
+                <span class="bsee-label">Куда сохранять:</span>
+                <?php $currentSource = Options::getReviewsSource(); ?>
+                <select id="bsee-source-quick" class="bsee-source-select">
+                    <option value="<?= Options::REVIEWS_SOURCE_FORUM ?>" <?= $currentSource === Options::REVIEWS_SOURCE_FORUM ? 'selected' : '' ?>>Форум</option>
+                    <option value="<?= Options::REVIEWS_SOURCE_BLOG ?>" <?= $currentSource === Options::REVIEWS_SOURCE_BLOG ? 'selected' : '' ?>>Блог</option>
+                    <option value="<?= Options::REVIEWS_SOURCE_IBLOCK ?>" <?= $currentSource === Options::REVIEWS_SOURCE_IBLOCK ? 'selected' : '' ?>>Кастомный инфоблок (Aspro Max)</option>
+                    <option value="<?= Options::REVIEWS_SOURCE_AUTO ?>" <?= $currentSource === Options::REVIEWS_SOURCE_AUTO ? 'selected' : '' ?>>Авто</option>
+                </select>
+                <span id="bsee-source-status" class="bsee-muted"></span>
             </div>
             <a href="blocksee_aiseo_reviews_urls.php?lang=<?= LANGUAGE_ID ?>" class="bsee-btn bsee-btn-ghost">Генерация по ссылкам →</a>
             <a href="blocksee_aiseo_options.php?lang=<?= LANGUAGE_ID ?>" class="bsee-btn bsee-btn-ghost">Настройки модуля</a>

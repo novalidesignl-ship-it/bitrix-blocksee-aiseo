@@ -39,7 +39,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_bitrix_sessid()) {
 
         // Reviews section
         $newSource = (string)($_POST['reviews_source'] ?? Options::REVIEWS_SOURCE_AUTO);
-        if (!in_array($newSource, [Options::REVIEWS_SOURCE_AUTO, Options::REVIEWS_SOURCE_FORUM, Options::REVIEWS_SOURCE_BLOG], true)) {
+        $allowedSources = [
+            Options::REVIEWS_SOURCE_AUTO,
+            Options::REVIEWS_SOURCE_FORUM,
+            Options::REVIEWS_SOURCE_BLOG,
+            Options::REVIEWS_SOURCE_IBLOCK,
+        ];
+        if (!in_array($newSource, $allowedSources, true)) {
             $newSource = Options::REVIEWS_SOURCE_AUTO;
         }
         Options::set('reviews_source', $newSource);
@@ -175,11 +181,15 @@ $APPLICATION->SetAdditionalCSS(Options::getAssetUrl('/assets/admin.css'));
                             <option value="<?= Options::REVIEWS_SOURCE_FORUM ?>" <?= $reviewsSource === Options::REVIEWS_SOURCE_FORUM ? 'selected' : '' ?> <?= !$forumModuleAvailable ? 'disabled' : '' ?>>
                                 Forum — топики (стандарт Битрикса)<?= !$forumModuleAvailable ? ' — модуль forum не установлен' : '' ?>
                             </option>
+                            <option value="<?= Options::REVIEWS_SOURCE_IBLOCK ?>" <?= $reviewsSource === Options::REVIEWS_SOURCE_IBLOCK ? 'selected' : '' ?>>
+                                Кастомный инфоблок (Aspro Max и подобные сборки)
+                            </option>
                         </select>
                     </label>
                     <br><small>
-                        Auto: предпочитаем blog (как у Aspro), форум — как fallback.
-                        Если на сайте используется компонент <code>bitrix:catalog.comments</code> с <code>BLOG_USE='Y'</code> — выбирайте blog.
+                        Blog — для Aspro Premier и совместимых (компонент <code>bitrix:catalog.comments</code> с <code>BLOG_USE='Y'</code>).<br>
+                        Forum — стандартный Битрикс-форум по XML_ID товара.<br>
+                        Кастомный инфоблок — для Aspro Max и сборок, где отзывы лежат в отдельном инфоблоке, а товары привязаны через свойство <code>PRODUCT_REVIEWS</code> / <code>LINK_REVIEWS</code>. Структура определяется автоматически.
                     </small>
                 </p>
                 <p>

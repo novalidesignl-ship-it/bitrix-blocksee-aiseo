@@ -125,6 +125,28 @@ class Reviews extends Controller
     }
 
     /**
+     * Меняет источник хранения отзывов (forum / blog / iblock / auto).
+     * Используется quick-селектором в шапке страницы «Отзывы товаров»,
+     * чтобы переключаться без захода в общие настройки модуля.
+     */
+    public function setSourceAction(string $source): ?array
+    {
+        if (!$this->requireAdmin()) return null;
+        $allowed = [
+            Options::REVIEWS_SOURCE_AUTO,
+            Options::REVIEWS_SOURCE_FORUM,
+            Options::REVIEWS_SOURCE_BLOG,
+            Options::REVIEWS_SOURCE_IBLOCK,
+        ];
+        if (!in_array($source, $allowed, true)) {
+            $this->addError(new Error('Недопустимый источник: ' . $source));
+            return null;
+        }
+        Options::set('reviews_source', $source);
+        return ['saved' => true, 'source' => $source, 'resolved' => Options::resolveReviewsSource()];
+    }
+
+    /**
      * Возвращает количество существующих отзывов для каждого ID из списка.
      * Используется страницей «Генерация отзывов по ссылкам» для UI-фильтра
      * «только товары без отзывов». Принимает comma-separated список ID,
