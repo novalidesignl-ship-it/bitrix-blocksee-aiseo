@@ -202,7 +202,16 @@ class CategoryGenerator
         }
 
         if (empty($parsed['success'])) {
-            return ['success' => false, 'error' => $parsed['error'] ?? 'API returned error'];
+            $err = (string)($parsed['error'] ?? 'API returned error');
+            // Сервер кладёт детальные причины каждой fallback-модели в поле `attempts`
+            // (формат: "deepseek/deepseek-v4-pro: <причина> | deepseek/deepseek-v4-flash: <причина>").
+            // Без этих деталей админ видит только обобщённое «All AI models failed» — нечитаемо.
+            // Прокидываем подробности дальше, чтобы UI показал реальную причину (rate limit,
+            // content filter, timeout и т.п.).
+            if (!empty($parsed['attempts']) && is_array($parsed['attempts'])) {
+                $err .= ' — ' . implode(' | ', $parsed['attempts']);
+            }
+            return ['success' => false, 'error' => $err];
         }
         $description = $parsed['data']['description'] ?? '';
         $description = trim((string)$description);
