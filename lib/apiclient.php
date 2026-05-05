@@ -22,7 +22,13 @@ class ApiClient
     public function generateProductDescription(array $productData, string $customPrompt = '', array $settings = []): array
     {
         $payload = [
-            'action' => 'generate_product_description',
+            // Битрикс-специфичный action: серверный case
+            // 'generate_product_description_bitrix' имеет hardcoded chain
+            // [DS Pro, DS Flash, Sonnet 4.6] независимо от общей
+            // bsee_models_chain_for_quality(), которой пользуется WP-плагин.
+            // Sonnet — страховка на случай SSN content-filter / залипания
+            // DeepSeek-провайдера.
+            'action' => 'generate_product_description_bitrix',
             'product_data' => $productData,
             'custom_prompt' => $customPrompt,
             'settings' => [

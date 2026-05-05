@@ -2,6 +2,22 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.9.7] — 2026-05-06
+
+### Изменено
+- Битрикс-модуль теперь шлёт **отдельный action `generate_product_description_bitrix`** для описаний товаров, как это уже сделано для категорий (v1.8.6) и отзывов (v1.9.0). На сервере `lk.blocksee.ru` создан парный case с hardcoded fallback chain **DS Pro → DS Flash → Sonnet 4.6**.
+- Зачем: общий `generate_product_description` (используется WordPress-плагином) пользуется `bsee_models_chain_for_quality()`, в которой только `[DS Pro, DS Flash]` без Sonnet. На сложных русских технических товарах обе DS-модели могут одновременно упасть (rate limit / SSN content filter / timeout) — без Sonnet страховки нет, и админка валилась с «All AI models failed». Sonnet через Anthropic-policy выручает в этих ситуациях.
+- Сам класс `UltimateAISEOGenerator` остался общий — описания товаров в WP и Битрикс структурно одинаковы, клонировать его смысла нет. Изоляция нужна только в точке маршрутизации моделей.
+
+### Серия `_bitrix` точек теперь полная
+| Action | Введено | Цепочка |
+|---|---|---|
+| `generate_category_description_bitrix` | v1.8.6 | Sonnet → DS Pro → DS Flash |
+| `generate_product_reviews_bitrix` | v1.9.0 / v1.9.2 | DS Pro → DS Flash → Sonnet |
+| `generate_product_description_bitrix` | v1.9.7 | DS Pro → DS Flash → Sonnet |
+
+WordPress-плагин использует общие `generate_*` без `_bitrix` суффикса. Все правки промптов / chain под Битрикс изолированы.
+
 ## [1.9.6] — 2026-05-06
 
 ### Исправлено
