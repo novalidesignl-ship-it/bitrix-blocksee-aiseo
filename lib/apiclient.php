@@ -90,7 +90,11 @@ class ApiClient
     {
         $count = max(1, min(50, $count));
         $payload = [
-            'action' => 'generate_product_reviews',
+            // Битрикс-специфичный action: серверный case 'generate_product_reviews_bitrix'
+            // использует отдельный класс BitrixProductReviewsGenerator с собственной
+            // fallback chain (Sonnet 4.6 → DS Pro → DS Flash). Изоляция от WP-плагина:
+            // правки промптов / post-processing для Битрикса не задевают WordPress.
+            'action' => 'generate_product_reviews_bitrix',
             'product_data' => $productData,
             'count' => $count,
             'request_id' => bin2hex(random_bytes(8)),

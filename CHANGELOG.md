@@ -2,6 +2,13 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.9.0] — 2026-05-05
+
+### Изменено
+- Битрикс-модуль теперь шлёт **отдельный action `generate_product_reviews_bitrix`** для генерации отзывов вместо общего `generate_product_reviews`. На сервере `lk.blocksee.ru` создан новый class `BitrixProductReviewsGenerator` (полная копия `ProductReviewsGenerator` с независимым namespace) и парный case в `api.php` с собственной fallback chain **Sonnet 4.6 → DS Pro → DS Flash**.
+- Зачем: точка для отзывов теперь полностью отвязана от WordPress-плагина Ultimate AI SEO Manager (который продолжает использовать `ProductReviewsGenerator` и `generate_product_reviews`). Любые правки промптов отзывов под Битрикс — добавление новых санитайзеров, изменение структуры author_name/content, тюнинг content-filter обходов — не могут сломать WP-точку. Параллельно с тем, что уже сделано для категорий (`generate_category_description_bitrix`).
+- Sonnet поставлен первым в цепочке: на технических товарах с артикулами вида `XX-XX-XX` DeepSeek-провайдер часто срабатывает SSN-фильтром OpenRouter; Sonnet через Anthropic-policy стабильнее.
+
 ## [1.8.9] — 2026-05-05
 
 ### Изменено
