@@ -85,7 +85,7 @@ $rs = \CIBlockElement::GetList(
     $filter,
     false,
     ['iNumPage' => $page, 'nPageSize' => $pageSize],
-    ['ID', 'NAME', 'IBLOCK_ID', 'DETAIL_TEXT', 'PREVIEW_TEXT', 'PREVIEW_PICTURE', 'DETAIL_PICTURE', 'CATALOG_GROUP_1']
+    ['ID', 'NAME', 'IBLOCK_ID', 'DETAIL_TEXT', 'PREVIEW_TEXT', 'PREVIEW_PICTURE', 'DETAIL_PICTURE', 'CATALOG_GROUP_1', 'DETAIL_PAGE_URL']
 );
 
 $items = [];
@@ -278,6 +278,13 @@ function bsee_get_sections(int $elementId): string
                 $currentDesc = $targetField === 'PREVIEW_TEXT'
                     ? (string)$item['PREVIEW_TEXT']
                     : (string)($item['DETAIL_TEXT'] ?: $item['PREVIEW_TEXT']);
+                // DETAIL_PAGE_URL для элементов уже резолвенный (Bitrix подставляет
+                // #SECTION_CODE_PATH#/#ELEMENT_CODE# сам). На всякий случай дописываем
+                // leading-/, как сделали для категорий в v1.8.2.
+                $frontendUrl = trim((string)($item['DETAIL_PAGE_URL'] ?? ''));
+                if ($frontendUrl !== '' && $frontendUrl[0] !== '/' && !preg_match('~^https?://~i', $frontendUrl)) {
+                    $frontendUrl = '/' . ltrim($frontendUrl, '/');
+                }
             ?>
                 <tr data-element-id="<?= $elementId ?>">
                     <td class="bsee-cell-check">
@@ -292,6 +299,9 @@ function bsee_get_sections(int $elementId): string
                     </td>
                     <td class="bsee-cell-info">
                         <a class="bsee-item-name" href="<?= htmlspecialcharsbx($editUrl) ?>" target="_blank"><?= htmlspecialcharsbx($item['NAME']) ?></a>
+                        <?php if ($frontendUrl): ?>
+                            <a class="bsee-item-frontend" href="<?= htmlspecialcharsbx($frontendUrl) ?>" target="_blank" rel="noopener" title="Открыть карточку товара на сайте в новой вкладке">↗ Просмотр на сайте</a>
+                        <?php endif; ?>
                         <div class="bsee-item-meta">
                             <span class="bsee-item-id">#<?= $elementId ?></span>
                             <?php if ($itemSections): ?>

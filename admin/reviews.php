@@ -71,7 +71,7 @@ $rs = \CIBlockElement::GetList(
     $filter,
     false,
     ['iNumPage' => $page, 'nPageSize' => $pageSize],
-    ['ID', 'NAME', 'IBLOCK_ID', 'PREVIEW_PICTURE', 'DETAIL_PICTURE']
+    ['ID', 'NAME', 'IBLOCK_ID', 'PREVIEW_PICTURE', 'DETAIL_PICTURE', 'DETAIL_PAGE_URL']
 );
 $items = [];
 while ($row = $rs->Fetch()) {
@@ -267,8 +267,21 @@ function bsee_stars(int $rating): string
                             <div class="bsee-thumb-empty">—</div>
                         <?php endif; ?>
                     </td>
+                    <?php
+                    // DETAIL_PAGE_URL для товара \CIBlockElement::GetList выдаёт уже резолвенным
+                    // (с подставленными #SECTION_CODE_PATH#, #ELEMENT_CODE# и т.п.) — в отличие
+                    // от секций, где приходит сырой шаблон. Дополнительно приводим к leading-/
+                    // на случай конфигов без префикса #SITE_DIR# (см. v1.8.2 для категорий).
+                    $frontendUrl = trim((string)($item['DETAIL_PAGE_URL'] ?? ''));
+                    if ($frontendUrl !== '' && $frontendUrl[0] !== '/' && !preg_match('~^https?://~i', $frontendUrl)) {
+                        $frontendUrl = '/' . ltrim($frontendUrl, '/');
+                    }
+                    ?>
                     <td class="bsee-cell-info">
                         <a class="bsee-item-name" href="<?= htmlspecialcharsbx($editUrl) ?>" target="_blank"><?= htmlspecialcharsbx($item['NAME']) ?></a>
+                        <?php if ($frontendUrl): ?>
+                            <a class="bsee-item-frontend" href="<?= htmlspecialcharsbx($frontendUrl) ?>" target="_blank" rel="noopener" title="Открыть карточку товара на сайте в новой вкладке">↗ Просмотр на сайте</a>
+                        <?php endif; ?>
                         <div class="bsee-item-meta">
                             <span class="bsee-item-id">#<?= $elementId ?></span>
                         </div>
