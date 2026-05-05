@@ -2,6 +2,12 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.8.6] — 2026-05-05
+
+### Изменено
+- Битрикс-модуль теперь шлёт **отдельный action `generate_category_description_bitrix`** вместо общего `generate_category_description`. На стороне `lk.blocksee.ru/api.php` создан соответствующий case с независимой fallback-цепочкой DS Pro → DS Flash → **Sonnet 4.6**. Раньше Битрикс и WordPress-плагин Ultimate AI SEO Manager делили один и тот же case — изменение цепочки моделей под одного клиента влияло на другого. Теперь точки разделены: правки fallback'а под Битрикс не задевают WP-сегмент.
+- Чем мотивировано: на euro-komplekt.ru генерация описания категории «Трубопроводная арматура» падала с HTTP 403 «Request blocked by content filter: [SSN]» — OpenRouter принимал артикулы вида `100-150-10`, `GL-012-01-0050-PN10` за Social Security Numbers и блокировал на всех моделях. Sonnet через Anthropic-policy не страдает SSN-фильтром, но раньше его не было в общей цепочке (убрали). Возвращаем — но точечно, только для Битрикса.
+
 ## [1.8.5] — 2026-05-05
 
 ### Изменено

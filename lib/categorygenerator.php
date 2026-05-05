@@ -163,7 +163,11 @@ class CategoryGenerator
         }
 
         $payload = [
-            'action' => 'generate_category_description',
+            // Битрикс-специфичный action: серверный case 'generate_category_description_bitrix'
+            // имеет собственную fallback-цепочку (DS Pro → DS Flash → Sonnet 4.6) независимо
+            // от общей bsee_models_chain_for_quality(), которой пользуется WordPress-плагин.
+            // Это позволяет тюнить chain под Битрикс-клиентов, не задевая WP.
+            'action' => 'generate_category_description_bitrix',
             'category_data' => $data,
             'custom_prompt' => Options::getCustomPrompt(),
             'settings' => Options::getGenerationSettings(),
