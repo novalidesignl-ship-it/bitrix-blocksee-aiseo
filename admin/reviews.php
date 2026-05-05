@@ -357,8 +357,8 @@ function bsee_stars(int $rating): string
                         <h4>1. Количество отзывов на товар</h4>
                     </div>
                     <p>
-                        <input type="number" id="bsee-rev-count" min="1" max="20" value="<?= (int)$reviewsPerProduct ?>" class="bsee-rev-count-input">
-                        <small class="bsee-muted">От 1 до 20. Каждому товару будет добавлено ровно столько новых отзывов.</small>
+                        <input type="text" id="bsee-rev-count" value="<?= (int)$reviewsPerProduct ?>" placeholder="3 или 1-3" class="bsee-rev-count-input" pattern="\d+(\s*-\s*\d+)?">
+                        <small class="bsee-muted">Можно одно число (например, <code>3</code>) или диапазон (<code>1-3</code>) — для каждого товара будет случайно выбрано число в диапазоне. Это выглядит реалистичнее, чем «у всех ровно 3».</small>
                     </p>
                 </div>
 

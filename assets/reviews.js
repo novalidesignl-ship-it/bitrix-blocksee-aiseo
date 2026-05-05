@@ -424,7 +424,22 @@
                 const scenarioLabel = scenario === 'skip_with_reviews' ? 'Добавить только пустым' : 'Добавить всем';
                 modal.style.display = 'none';
 
-                const count = Math.max(1, Math.min(20, parseInt((qs('#bsee-rev-count') || {}).value || cfg().defaultCount || 3, 10)));
+                // Парсим input как «3» или «1-3» (диапазон). Для каждого товара
+                // в цикле ниже будет случайное число в диапазоне — выглядит
+                // реалистичнее, чем «у всех ровно 3».
+                const rawCount = String((qs('#bsee-rev-count') || {}).value || cfg().defaultCount || 3).trim();
+                const m = rawCount.match(/^(\d+)\s*(?:-\s*(\d+))?$/);
+                let minCount = 3, maxCount = 3;
+                if (m) {
+                    minCount = Math.max(1, parseInt(m[1], 10));
+                    maxCount = m[2] != null ? Math.min(20, parseInt(m[2], 10)) : minCount;
+                    if (maxCount < minCount) maxCount = minCount;
+                }
+                const pickCount = () => minCount === maxCount
+                    ? minCount
+                    : Math.floor(Math.random() * (maxCount - minCount + 1)) + minCount;
+                // Усреднённое значение для confirm-сообщения и оценки общего числа.
+                const avgCount = Math.round((minCount + maxCount) / 2);
 
                 const url = new URL(window.location.href);
                 const iblockId = cfg().iblockId || parseInt(url.searchParams.get('IBLOCK_ID') || '0', 10);
@@ -461,7 +476,8 @@
                         alert('Нет товаров, подходящих под этот сценарий.');
                         return;
                     }
-                    if (!confirm(`Запустить "${scenarioLabel}" для ${total} товаров (${sectionLabel}), по ${count} отзыв(ов) на товар?\nВ сумме будет сгенерировано ~${total * count} отзывов. Если закроете вкладку, прогресс остановится.`)) {
+                    const countDesc = minCount === maxCount ? `по ${minCount}` : `от ${minCount} до ${maxCount}`;
+                    if (!confirm(`Запустить "${scenarioLabel}" для ${total} товаров (${sectionLabel}), ${countDesc} отзыв(ов) на товар?\nВ сумме будет сгенерировано ~${total * avgCount} отзывов. Если закроете вкладку, прогресс остановится.`)) {
                         if (box) box.style.display = 'none';
                         return;
                     }
@@ -475,7 +491,7 @@
                         for (const id of chunk.ids) {
                             if (bulkCancelled) break;
                             try {
-                                const data = await call('generateAndSave', { id, count });
+                                const data = await call('generateAndSave', { id, count: pickCount() });
                                 processed++;
                                 const row = qs('tr[data-element-id="' + id + '"]');
                                 if (row) updateRowCount(row, data.total || 0);

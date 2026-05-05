@@ -90,10 +90,34 @@
             .filter(function (i) { return i >= 0; });
     }
 
-    function getReviewCount() {
+    /**
+     * Парсит значение #bsee-rev-count в [min, max].
+     * Поддерживает форматы: "3" → [3,3], "1-3" → [1,3], "  2 - 5 " → [2,5].
+     * Невалидные → дефолт [3,3].
+     */
+    function parseReviewCountRange() {
         const inp = qs('#bsee-rev-count');
-        const v = inp ? parseInt(inp.value, 10) : NaN;
-        return (Number.isFinite(v) && v >= 1 && v <= 20) ? v : 3;
+        const raw = inp ? String(inp.value).trim() : '';
+        const m = raw.match(/^(\d+)\s*(?:-\s*(\d+))?$/);
+        if (!m) return [3, 3];
+        let min = parseInt(m[1], 10);
+        let max = m[2] != null ? parseInt(m[2], 10) : min;
+        if (!Number.isFinite(min) || min < 1) min = 1;
+        if (!Number.isFinite(max) || max > 20) max = 20;
+        if (max < min) max = min;
+        return [min, max];
+    }
+
+    /**
+     * Возвращает количество отзывов для следующей генерации.
+     * Если задан диапазон — случайное число в диапазоне (для естественного
+     * распределения: одному товару 1 отзыв, другому 2, третьему 3 — выглядит
+     * реалистичнее, чем «у всех ровно 3»).
+     */
+    function getReviewCount() {
+        const [min, max] = parseReviewCountRange();
+        if (min === max) return min;
+        return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
     function renderTable() {
@@ -303,8 +327,9 @@
                 alert('Нет найденных товаров для генерации.');
                 return;
             }
-            const count = getReviewCount();
-            if (!confirm(`Запустить генерацию ${count} отзывов на каждый из ${indices.length} товаров? Если закроете вкладку, прогресс остановится.`)) {
+            const [minC, maxC] = parseReviewCountRange();
+            const summary = (minC === maxC) ? `по ${minC}` : `от ${minC} до ${maxC}`;
+            if (!confirm(`Запустить генерацию ${summary} отзывов на каждый из ${indices.length} товаров? Если закроете вкладку, прогресс остановится.`)) {
                 return;
             }
             btn.disabled = true;
@@ -319,6 +344,9 @@
                 if (bulkCancelled) break;
                 const it = resolved[idx];
                 setRowStatus(idx, 'processing', '');
+                // Random count в диапазоне [minC, maxC] для каждого товара отдельно —
+                // чтобы у разных товаров было разное число отзывов (естественнее).
+                const count = getReviewCount();
                 try {
                     await call('generateController', 'generateAndSave', { id: it.id, count });
                     setRowStatus(idx, 'success', '');

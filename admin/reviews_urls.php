@@ -88,8 +88,8 @@ if ($src === Options::REVIEWS_SOURCE_BLOG) {
         <textarea id="bsee-urls-input" placeholder="https://mebelesd.ru/catalog/.../my-product/&#10;https://mebelesd.ru/catalog/.../another-product/&#10;..." rows="8"></textarea>
         <div class="bsee-prompt-footer" style="gap: 14px; flex-wrap: wrap;">
             <label class="bsee-field" style="display:flex; align-items:center; gap:8px; margin:0;">
-                <span style="white-space:nowrap;">Отзывов на товар:</span>
-                <input type="number" id="bsee-rev-count" min="1" max="20" value="<?= (int)$reviewsPerProduct ?>" class="bsee-rev-count-input" style="width: 70px;">
+                <span style="white-space:nowrap;" title="Сколько отзывов сгенерировать на каждый товар. Можно задать диапазон — например, 1-3 — тогда каждому товару будет случайно выбрано число отзывов в этом диапазоне (выглядит реалистичнее).">Отзывов на товар:</span>
+                <input type="text" id="bsee-rev-count" value="<?= (int)$reviewsPerProduct ?>" placeholder="3 или 1-3" class="bsee-rev-count-input" style="width: 80px;" pattern="\d+(\s*-\s*\d+)?">
             </label>
             <label id="bsee-filter-no-reviews-wrap" style="display:none; align-items:center; gap:6px; margin:0; cursor: pointer;">
                 <input type="checkbox" id="bsee-filter-no-reviews" style="margin:0;">
