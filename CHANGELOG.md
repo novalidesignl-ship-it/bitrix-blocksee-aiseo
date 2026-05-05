@@ -2,6 +2,11 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.9.12] — 2026-05-06
+
+### Откат
+- Откатил MySQL reconnect (v1.9.11) из `ReviewsGenerator::saveReviewsForElement`, `Generator::saveDescription`, `CategoryGenerator::saveDescription`. Reconnect через `Connection::disconnect()`+`connect()` на euro-komplekt вешал сайт. Возвращаемся к состоянию v1.9.10. Проблему «MySQL Query Error при bulk-генерации по ссылкам» будем решать иначе — изучаем.
+
 ## [1.9.11] — 2026-05-06
 
 ### Исправлено (критично, bulk-генерация)

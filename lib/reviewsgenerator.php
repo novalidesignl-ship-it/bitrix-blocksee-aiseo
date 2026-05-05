@@ -101,14 +101,6 @@ class ReviewsGenerator
             return ['success' => false, 'error' => 'Источник отзывов не настроен (нужен модуль blog или forum)'];
         }
 
-        // Reconnect к MySQL перед записью. Между AI-вызовом (60+ секунд) и
-        // сохранением в БД shared-хостинг может закрыть idle MySQL connection
-        // по wait_timeout. На euro-komplekt при bulk-генерации по ссылкам это
-        // приводило к «MySQL Query Error» (HTML вместо JSON ответа AJAX) на
-        // длинных запросах. Форсированный reconnect возвращает живой
-        // connection в pool.
-        $this->reopenDbConnection();
-
         $opts = [
             'auto_approve' => Options::getReviewsAutoApprove(),
         ];
@@ -123,32 +115,6 @@ class ReviewsGenerator
             $res['topic_id'] = $res['container_id'];
         }
         return $res;
-    }
-
-    /**
-     * Принудительно пересоздаёт MySQL connection в Битрикс-pool.
-     * Используется после долгих внешних HTTP-вызовов (AI API, 30-90 сек),
-     * за которые shared-хостинг может закрыть idle connection по wait_timeout.
-     * Без этого следующий SQL падает с «MySQL server has gone away» / «Query Error».
-     */
-    private function reopenDbConnection(): void
-    {
-        try {
-            $conn = \Bitrix\Main\Application::getInstance()->getConnection();
-            // Bitrix Connection поддерживает disconnect/connect через D7 API
-            if (method_exists($conn, 'disconnect')) {
-                $conn->disconnect();
-            }
-            // Следующий запрос автоматически откроет новый connection.
-            // Если есть метод connect — вызываем явно.
-            if (method_exists($conn, 'connect')) {
-                $conn->connect();
-            }
-        } catch (\Throwable $e) {
-            // Reconnect best-effort. Если не получилось — следующий SQL запрос
-            // битрикса сам попробует и упадёт с понятной ошибкой, не будем
-            // её тут глушить — пусть всплывёт наверх.
-        }
     }
 
     public function generateAndSaveForElement(int $elementId, int $count = 0): array
