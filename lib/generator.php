@@ -50,6 +50,14 @@ class Generator
             return ['success' => false, 'error' => 'Описание пустое'];
         }
 
+        // См. ReviewsGenerator::reopenDbConnection — те же мотивы.
+        // После 30-90s AI-вызова shared-хостинг может закрыть idle MySQL connection.
+        try {
+            $conn = \Bitrix\Main\Application::getInstance()->getConnection();
+            if (method_exists($conn, 'disconnect')) $conn->disconnect();
+            if (method_exists($conn, 'connect')) $conn->connect();
+        } catch (\Throwable $e) {}
+
         $targetField = Options::getTargetField();
         $iblockElement = new \CIBlockElement();
 

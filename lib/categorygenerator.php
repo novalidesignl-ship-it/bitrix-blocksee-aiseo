@@ -246,6 +246,13 @@ class CategoryGenerator
     {
         $sectionId = (int)$sectionId;
         $description = TextSanitizer::stripEmoji(trim((string)$description));
+        // Reconnect к MySQL после долгого AI-вызова, чтобы избежать
+        // «MySQL server has gone away» на shared-хостингах с low wait_timeout.
+        try {
+            $conn = \Bitrix\Main\Application::getInstance()->getConnection();
+            if (method_exists($conn, 'disconnect')) $conn->disconnect();
+            if (method_exists($conn, 'connect')) $conn->connect();
+        } catch (\Throwable $e) {}
         // Защита для случаев, когда description приходит из textarea-редактора
         // в админке (после ручной правки) и не содержит <p> — оборачиваем сами,
         // чтобы фронт-шаблон не получал «склеенный» текст.

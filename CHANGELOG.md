@@ -2,6 +2,16 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.9.11] — 2026-05-06
+
+### Исправлено (критично, bulk-генерация)
+- На сайтах с low MySQL `wait_timeout` (60-90 сек на shared-хостингах вроде timeweb) bulk-генерация отзывов и описаний по ссылкам падала с `MySQL Query Error` и **HTML вместо JSON** в AJAX-ответе («Unexpected token 'F', "FILE: /hom"... is not valid JSON»). Корень: AI-вызов длится 30-90 сек, за это время MySQL закрывает idle connection в Битрикс-pool, и следующий SQL `\CIBlockElement::Add` / `SetPropertyValuesEx` упирается в stale connection.
+- Добавлен принудительный reconnect MySQL connection **сразу перед записью** в БД в трёх ключевых точках:
+  - `ReviewsGenerator::saveReviewsForElement` (через приватный метод `reopenDbConnection`).
+  - `Generator::saveDescription`.
+  - `CategoryGenerator::saveDescription`.
+- Reconnect через `\Bitrix\Main\Application::getInstance()->getConnection()->disconnect()` + `connect()`. Best-effort: если по какой-то причине не получилось — следующий SQL сам попробует и упадёт с понятной ошибкой.
+
 ## [1.9.10] — 2026-05-06
 
 ### Исправлено
