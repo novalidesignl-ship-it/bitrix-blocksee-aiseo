@@ -85,7 +85,7 @@ $rs = \CIBlockElement::GetList(
     $filter,
     false,
     ['iNumPage' => $page, 'nPageSize' => $pageSize],
-    ['ID', 'NAME', 'IBLOCK_ID', 'DETAIL_TEXT', 'PREVIEW_TEXT', 'PREVIEW_PICTURE', 'DETAIL_PICTURE', 'CATALOG_GROUP_1', 'DETAIL_PAGE_URL']
+    ['ID', 'NAME', 'CODE', 'EXTERNAL_ID', 'IBLOCK_ID', 'IBLOCK_SECTION_ID', 'DETAIL_TEXT', 'PREVIEW_TEXT', 'PREVIEW_PICTURE', 'DETAIL_PICTURE', 'CATALOG_GROUP_1', 'DETAIL_PAGE_URL']
 );
 
 $items = [];
@@ -278,10 +278,16 @@ function bsee_get_sections(int $elementId): string
                 $currentDesc = $targetField === 'PREVIEW_TEXT'
                     ? (string)$item['PREVIEW_TEXT']
                     : (string)($item['DETAIL_TEXT'] ?: $item['PREVIEW_TEXT']);
-                // DETAIL_PAGE_URL для элементов уже резолвенный (Bitrix подставляет
-                // #SECTION_CODE_PATH#/#ELEMENT_CODE# сам). На всякий случай дописываем
-                // leading-/, как сделали для категорий в v1.8.2.
-                $frontendUrl = trim((string)($item['DETAIL_PAGE_URL'] ?? ''));
+                // DETAIL_PAGE_URL приходит как сырой шаблон с плейсхолдерами
+                // (#SITE_DIR#, #SECTION_CODE_PATH#, #ELEMENT_CODE#, #ELEMENT_ID#).
+                // Резолвим через CIBlock::ReplaceDetailUrl с типом 'E' (элемент).
+                // Тот же подход, что для секций в v1.8.1, плюс leading-/ для шаблонов
+                // без префикса #SITE_DIR# (см. v1.8.2).
+                $urlTemplate = (string)($item['DETAIL_PAGE_URL'] ?? '');
+                $frontendUrl = $urlTemplate !== ''
+                    ? \CIBlock::ReplaceDetailUrl($urlTemplate, $item, false, 'E')
+                    : '';
+                $frontendUrl = trim((string)$frontendUrl);
                 if ($frontendUrl !== '' && $frontendUrl[0] !== '/' && !preg_match('~^https?://~i', $frontendUrl)) {
                     $frontendUrl = '/' . ltrim($frontendUrl, '/');
                 }

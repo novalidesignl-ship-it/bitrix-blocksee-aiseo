@@ -71,7 +71,7 @@ $rs = \CIBlockElement::GetList(
     $filter,
     false,
     ['iNumPage' => $page, 'nPageSize' => $pageSize],
-    ['ID', 'NAME', 'IBLOCK_ID', 'PREVIEW_PICTURE', 'DETAIL_PICTURE', 'DETAIL_PAGE_URL']
+    ['ID', 'NAME', 'CODE', 'EXTERNAL_ID', 'IBLOCK_ID', 'IBLOCK_SECTION_ID', 'PREVIEW_PICTURE', 'DETAIL_PICTURE', 'DETAIL_PAGE_URL']
 );
 $items = [];
 while ($row = $rs->Fetch()) {
@@ -268,11 +268,13 @@ function bsee_stars(int $rating): string
                         <?php endif; ?>
                     </td>
                     <?php
-                    // DETAIL_PAGE_URL для товара \CIBlockElement::GetList выдаёт уже резолвенным
-                    // (с подставленными #SECTION_CODE_PATH#, #ELEMENT_CODE# и т.п.) — в отличие
-                    // от секций, где приходит сырой шаблон. Дополнительно приводим к leading-/
-                    // на случай конфигов без префикса #SITE_DIR# (см. v1.8.2 для категорий).
-                    $frontendUrl = trim((string)($item['DETAIL_PAGE_URL'] ?? ''));
+                    // DETAIL_PAGE_URL приходит как сырой шаблон. Резолвим через
+                    // CIBlock::ReplaceDetailUrl с типом 'E' (элемент). См. v1.9.3.
+                    $urlTemplate = (string)($item['DETAIL_PAGE_URL'] ?? '');
+                    $frontendUrl = $urlTemplate !== ''
+                        ? \CIBlock::ReplaceDetailUrl($urlTemplate, $item, false, 'E')
+                        : '';
+                    $frontendUrl = trim((string)$frontendUrl);
                     if ($frontendUrl !== '' && $frontendUrl[0] !== '/' && !preg_match('~^https?://~i', $frontendUrl)) {
                         $frontendUrl = '/' . ltrim($frontendUrl, '/');
                     }

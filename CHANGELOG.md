@@ -2,6 +2,11 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.9.3] — 2026-05-05
+
+### Исправлено
+- Кнопка «↗ Просмотр на сайте» для товаров возвращала сырой шаблон вида `/#SITE_DIR#catalog/#SECTION_CODE_PATH#/#ELEMENT_ID#/`. Я ошибочно полагал что `\CIBlockElement::GetList` сам резолвит `DETAIL_PAGE_URL`, но Битрикс отдаёт его шаблоном — как и для секций. Резолвим через `\CIBlock::ReplaceDetailUrl($url, $item, false, 'E')`. В `arSelect` добавлены `CODE`, `EXTERNAL_ID`, `IBLOCK_SECTION_ID` — нужны для корректной подстановки `#SECTION_CODE_PATH#`.
+
 ## [1.9.2] — 2026-05-05
 
 ### Добавлено
