@@ -2,6 +2,15 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.8.4] — 2026-05-05
+
+### Исправлено (критично, PHP 8+)
+- **Fatal error «Only variables can be passed by reference» при установке модуля и работе с пулом авторов.** Старая Битрикс-сигнатура `\CSite::GetList(&$by, &$order, ...)` и `\CUser::GetList(&$by, &$order, ...)` принимает первые два параметра по ссылке. На PHP 8.0+ строгая проверка: literal strings (`'ID'`, `'ASC'`) **запрещено** передавать в by-ref параметры — выдаёт fatal. На PHP 7.x это была warning, поэтому раньше не ломалось.
+- Заменил literal strings на переменные в трёх местах:
+  - `install/index.php` (`ensureReviewsForum`) — иначе модуль вообще не устанавливался.
+  - `lib/reviews/personapool.php::findAllExisting`
+  - `lib/reviews/blogbackend.php::getPersonaInfo`
+
 ## [1.8.3] — 2026-05-04
 
 ### Изменено

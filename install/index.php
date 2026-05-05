@@ -154,9 +154,15 @@ class blocksee_aiseo extends CModule
             return;
         }
 
-        // Collect active sites the forum should be visible on
+        // Collect active sites the forum should be visible on.
+        // Параметры by/order передаются через переменные — на PHP 8+ literal strings
+        // нельзя передавать в \CSite::GetList(&$by, &$order, ...) (fatal "Only variables
+        // can be passed by reference"). Это законная фича модерн-PHP, старая сигнатура
+        // битрикса требует именно переменных.
         $sites = [];
-        $rsSite = \CSite::GetList('sort', 'asc', ['ACTIVE' => 'Y']);
+        $by = 'sort';
+        $order = 'asc';
+        $rsSite = \CSite::GetList($by, $order, ['ACTIVE' => 'Y']);
         while ($s = $rsSite->Fetch()) {
             $sites[$s['LID']] = ($s['DIR'] ?: '/');
         }

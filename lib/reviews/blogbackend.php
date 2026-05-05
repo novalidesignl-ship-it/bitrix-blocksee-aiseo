@@ -560,7 +560,10 @@ class BlogBackend implements Backend
     {
         static $cache = [];
         if (isset($cache[$userId])) return $cache[$userId];
-        $rs = \CUser::GetList('ID', 'ASC', ['ID' => $userId], ['FIELDS' => ['NAME', 'LAST_NAME', 'EMAIL']]);
+        // by/order через переменные — на PHP 8+ literal strings в byref = fatal.
+        $by = 'ID';
+        $order = 'ASC';
+        $rs = \CUser::GetList($by, $order, ['ID' => $userId], ['FIELDS' => ['NAME', 'LAST_NAME', 'EMAIL']]);
         if ($u = $rs->Fetch()) {
             $name = trim(($u['NAME'] ?? '') . ' ' . ($u['LAST_NAME'] ?? ''));
             return $cache[$userId] = ['name' => $name, 'email' => (string)($u['EMAIL'] ?? '')];

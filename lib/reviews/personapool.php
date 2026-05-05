@@ -116,7 +116,10 @@ class PersonaPool
     /** @return int[] */
     private static function findAllExisting(): array
     {
-        $rs = \CUser::GetList('ID', 'ASC', ['EXTERNAL_AUTH_ID' => self::EXTERNAL_AUTH_ID], ['FIELDS' => ['ID']]);
+        // by/order через переменные — на PHP 8+ literal strings в byref = fatal.
+        $by = 'ID';
+        $order = 'ASC';
+        $rs = \CUser::GetList($by, $order, ['EXTERNAL_AUTH_ID' => self::EXTERNAL_AUTH_ID], ['FIELDS' => ['ID']]);
         $out = [];
         while ($u = $rs->Fetch()) {
             $out[] = (int)$u['ID'];
