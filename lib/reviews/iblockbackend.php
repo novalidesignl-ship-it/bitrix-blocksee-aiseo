@@ -207,12 +207,17 @@ class IblockBackend implements Backend
             } else {
                 $author = (string)$r['NAME'];
             }
+            // Ключи унифицированы с ForumBackend/BlogBackend: 'author' (не
+            // 'author_name'), плюс approved/ai. Без этого UI-вьюер на странице
+            // отзывов рендерил пустого автора и не показывал AI-метку.
             $out[] = [
                 'id' => (int)$r['ID'],
-                'author_name' => $author,
+                'author' => $author,
                 'content' => (string)$r['DETAIL_TEXT'],
                 'rating' => (int)($r['PROPERTY_' . $ratingCode . '_VALUE'] ?? 0),
                 'date' => (string)$r['DATE_CREATE'],
+                'approved' => true, // в инфоблоке нет состояния модерации; auto-approve по умолчанию
+                'ai' => true,        // backend используется только AI-модулем, метка для UI
             ];
         }
         return $out;

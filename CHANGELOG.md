@@ -2,6 +2,11 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.9.6] — 2026-05-06
+
+### Исправлено
+- В попапе «Посмотреть отзывы» (на странице «Отзывы товаров») при использовании `IblockBackend` (Aspro Max) **не отображалось имя автора**. Backend отдавал поле `author_name`, тогда как `ForumBackend`/`BlogBackend` отдают `author` — JS-вьюер `assets/reviews.js` читает именно `r.author`. Унифицировал ключи: теперь `IblockBackend` отдаёт `author`, `approved` (всегда `true` — в инфоблоке нет состояния модерации, авто-апрув по умолчанию), `ai` (всегда `true` — backend используется только AI-модулем, метка для UI).
+
 ## [1.9.5] — 2026-05-05
 
 ### Исправлено
