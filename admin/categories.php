@@ -34,6 +34,12 @@ if ($selectedIblockId === 0 && !empty($catalogIblocks)) {
 
 $search = trim((string)($_REQUEST['find'] ?? ''));
 $scenarioFilter = (string)($_REQUEST['scenario'] ?? 'all');
+// Фильтр «структура»: parents_only (по умолчанию) скрывает листовые секции —
+// те, у которых нет дочерних подкатегорий. На каталогах вроде euro-komplekt
+// нижний уровень разделов фактически выполняет роль «карточки модели» (там лежат
+// SKU c разными типоразмерами), и пользователю на странице «Описания категорий»
+// они выглядят как товары. По умолчанию показываем только секции-родители.
+$structureFilter = (string)($_REQUEST['structure'] ?? 'parents_only');
 $page = max(1, (int)($_REQUEST['page'] ?? 1));
 $pageSize = 25;
 
@@ -45,19 +51,28 @@ if ($search !== '') {
     $filter['NAME'] = '%' . $search . '%';
 }
 
-// Сценарий «empty_only» — отбираем секции с пустым DESCRIPTION прямым SQL,
-// иначе пагинация даёт «всплеск пустых» только в пределах одной страницы.
-if ($scenarioFilter === 'empty_only' && $selectedIblockId > 0) {
-    $emptyIds = [];
+// Прямой SQL для фильтров «empty_only» и «parents_only» — иначе пагинация даёт
+// «всплеск» нужных строк только в пределах одной страницы (Bitrix::GetList не
+// умеет ни DESCRIPTION-пустоту, ни nested-set-условия в filter API).
+if ($selectedIblockId > 0 && ($scenarioFilter === 'empty_only' || $structureFilter === 'parents_only')) {
     $conn = \Bitrix\Main\Application::getConnection();
-    $sqlEmpty = "SELECT ID FROM b_iblock_section WHERE IBLOCK_ID = " . (int)$selectedIblockId
-        . " AND ACTIVE='Y'"
-        . " AND (DESCRIPTION IS NULL OR DESCRIPTION = '')";
-    $rsEmpty = $conn->query($sqlEmpty);
-    while ($r = $rsEmpty->fetch()) {
-        $emptyIds[] = (int)$r['ID'];
+    $where = ["IBLOCK_ID = " . (int)$selectedIblockId, "ACTIVE='Y'"];
+    if ($scenarioFilter === 'empty_only') {
+        $where[] = "(DESCRIPTION IS NULL OR DESCRIPTION = '')";
     }
-    $filter['ID'] = $emptyIds ?: [-1];
+    if ($structureFilter === 'parents_only') {
+        // Nested-set: листовая секция = RIGHT_MARGIN - LEFT_MARGIN = 1.
+        // Берём только те, у которых разница > 1 — значит есть дочерние подкатегории.
+        $where[] = "RIGHT_MARGIN - LEFT_MARGIN > 1";
+    }
+    $sql = "SELECT ID FROM b_iblock_section WHERE " . implode(' AND ', $where);
+    $rs2 = $conn->query($sql);
+    $matchedIds = [];
+    while ($r = $rs2->fetch()) {
+        $matchedIds[] = (int)$r['ID'];
+    }
+    // Пустой результат: подставляем -1, чтобы CIBlockSection::GetList вернул 0 строк.
+    $filter['ID'] = $matchedIds ?: [-1];
 }
 
 $rs = \CIBlockSection::GetList(
@@ -133,6 +148,13 @@ function bsee_cat_edit_url(int $iblockId, int $sectionId): string
                 <select name="scenario">
                     <option value="all" <?= $scenarioFilter === 'all' ? 'selected' : '' ?>>Все категории</option>
                     <option value="empty_only" <?= $scenarioFilter === 'empty_only' ? 'selected' : '' ?>>Только без описания</option>
+                </select>
+            </label>
+            <label class="bsee-field">
+                <span>Структура</span>
+                <select name="structure">
+                    <option value="parents_only" <?= $structureFilter === 'parents_only' ? 'selected' : '' ?>>Только с подкатегориями</option>
+                    <option value="all" <?= $structureFilter === 'all' ? 'selected' : '' ?>>Все (включая листовые)</option>
                 </select>
             </label>
             <label class="bsee-field bsee-field-search">
@@ -254,6 +276,7 @@ function bsee_cat_edit_url(int $iblockId, int $sectionId): string
             'IBLOCK_ID' => $selectedIblockId,
             'find' => $search,
             'scenario' => $scenarioFilter,
+            'structure' => $structureFilter,
         ]);
         $makeUrl = function ($p) use ($baseUrl) { return htmlspecialcharsbx($baseUrl . '&page=' . $p); };
 
