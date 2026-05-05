@@ -39,9 +39,12 @@ class ApiClient
             ],
         ];
 
+        // Таймаут 180s. Серверная chain Sonnet 4.6 → DS Pro → DS Flash может
+        // последовательно прогнать 3 модели с 60s timeout каждая (если первые
+        // отвечают пустым content). 90s нам не хватало.
         $client = new HttpClient([
-            'socketTimeout' => 90,
-            'streamTimeout' => 90,
+            'socketTimeout' => 180,
+            'streamTimeout' => 180,
             'waitResponse' => true,
         ]);
         $client->setHeader('Content-Type', 'application/json; charset=utf-8');

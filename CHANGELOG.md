@@ -2,6 +2,13 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.9.8] — 2026-05-06
+
+### Исправлено (критично, описания товаров)
+- На euro-komplekt и других сайтах с ZeroGPT-ориентированными post-processing-фильтрами `UltimateAISEOGenerator` мог обнулять весь HTML-ответ Sonnet до пустой строки — модуль валился с «All AI models failed». Серверный case `generate_product_description_bitrix` **полностью переписан**: больше не использует `UltimateAISEOGenerator`, а вызывает `ApiClient::call` напрямую со своим компактным промптом (журналистский тон, без ZeroGPT-чисток). На Sonnet/DS Pro теперь стабильно возвращает 800-1500 символов готового HTML.
+- WordPress-плагин Ultimate AI SEO Manager продолжает использовать общий `generate_product_description` с `UltimateAISEOGenerator` — изменение касается только Битрикс-канала.
+- Клиентский таймаут `CategoryGenerator`-стиля поднят с 90 до **180 секунд** в описаниях товаров (`apiclient.php::generateProductDescription`). Серверная chain из 3 моделей по 60s каждая может занять ≥120s, на 90s клиент рвал соединение посреди успешного запроса.
+
 ## [1.9.7] — 2026-05-06
 
 ### Изменено
