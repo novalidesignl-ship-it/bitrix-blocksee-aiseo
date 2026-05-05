@@ -222,6 +222,32 @@ class Generator extends Controller
             }
         }
 
+        // Phase 2: fallback по ID для числовых сегментов. Aspro Max и часть других
+        // сборок генерируют URL карточки с element ID в конце:
+        //   /catalog/section/some-section-name/16178/
+        // Когда CODE-резолв не нашёл — пробуем интерпретировать сегмент как ID.
+        // Это безопасно: ищем только в каталог-инфоблоках с условием ID = N.
+        $foundById = [];
+        $numericIds = [];
+        foreach ($byCode as $code => $_) {
+            // Сегмент полностью числовой и не короче 1 — кандидат на ID.
+            if (ctype_digit((string)$code) && !isset($foundByCode[$code])) {
+                $numericIds[(int)$code] = true;
+            }
+        }
+        if ($numericIds) {
+            $rs = \CIBlockElement::GetList(
+                ['ID' => 'ASC'],
+                ['IBLOCK_ID' => $iblockIds, 'ID' => array_keys($numericIds), 'ACTIVE' => 'Y'],
+                false,
+                false,
+                ['ID', 'NAME', 'CODE', 'IBLOCK_ID']
+            );
+            while ($row = $rs->Fetch()) {
+                $foundById[(int)$row['ID']] = $row;
+            }
+        }
+
         // ВНИМАНИЕ: предыдущая реализация имела Phase 2 — fallback по DETAIL_PAGE_URL LIKE.
         // Удалено: DETAIL_PAGE_URL это НЕ колонка таблицы b_iblock_element, а шаблон-строка
         // на инфоблоке (b_iblock.DETAIL_PAGE_URL). Bitrix вычисляет реальный URL на лету,
@@ -241,6 +267,8 @@ class Generator extends Controller
             $matched = null;
             if ($item['code'] !== '' && isset($foundByCode[$item['code']])) {
                 $matched = $foundByCode[$item['code']];
+            } elseif ($item['code'] !== '' && ctype_digit((string)$item['code']) && isset($foundById[(int)$item['code']])) {
+                $matched = $foundById[(int)$item['code']];
             }
 
             if ($matched) {
