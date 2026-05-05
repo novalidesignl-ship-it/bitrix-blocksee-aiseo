@@ -2,6 +2,14 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.8.7] — 2026-05-05
+
+### Изменено
+- Поднял таймаут HTTP-клиента в `CategoryGenerator` с 90 до **180 секунд**. Серверная цепочка для Битрикс-категорий теперь Sonnet 4.6 → DS Pro → DS Flash, и на сложных промптах (с reasoning у Sonnet или зависанием DeepSeek) ответ может приходить за 90+ секунд. Раньше клиент рвал соединение с `Transport error: Stream reading timeout` посреди успешного запроса.
+
+### Сервер `lk.blocksee.ru/api.php`
+- В `case 'generate_category_description_bitrix'` Sonnet 4.6 поставлен **первым** в цепочке, DS Pro и DS Flash — fallback. Sonnet стабильнее на технических русских терминах («трубопроводная арматура», «затворы/клапаны/краны»), не страдает SSN-фильтром OpenRouter и обычно отвечает за 30-50 сек.
+
 ## [1.8.6] — 2026-05-05
 
 ### Изменено

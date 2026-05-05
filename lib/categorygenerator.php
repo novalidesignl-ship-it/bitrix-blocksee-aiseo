@@ -173,9 +173,14 @@ class CategoryGenerator
             'settings' => Options::getGenerationSettings(),
         ];
 
+        // Таймаут 180s: серверная chain включает Sonnet + 2x DeepSeek fallback.
+        // Sonnet обычно отвечает за 30-60s, но на сложных промптах с deeper reasoning
+        // может уйти и за 90s. С учётом возможного fallback на DeepSeek (если Sonnet
+        // ответил пустотой) — 180s даёт цепочке время дожить до результата вместо
+        // того, чтобы рваться 'Stream reading timeout' прямо посреди успешного запроса.
         $client = new HttpClient([
-            'socketTimeout' => 90,
-            'streamTimeout' => 90,
+            'socketTimeout' => 180,
+            'streamTimeout' => 180,
             'waitResponse' => true,
         ]);
         $client->setHeader('Content-Type', 'application/json; charset=utf-8');
