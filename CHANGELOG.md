@@ -2,6 +2,12 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.10.2] — 2026-05-06
+
+### Исправлено (custom-backend)
+- В `CustomBackend::saveForElement` поле `ACTIVE_FROM` теперь проставляется явно при создании элемента отзыва. На сайтах вроде tsar-climat.ru это поле в `b_iblock_fields` имеет `IS_REQUIRED='Y'` и `Add()` отклоняется с сообщением «Обязательное поле "Начало активности" не заполнено».
+- Если в настройках модуля включён диапазон случайных дат (`reviews_date_range_enabled='Y'` + `reviews_date_from`/`reviews_date_to`) — каждому отзыву даётся случайный таймстамп в этом окне, иначе `now()`. Логика синхронна с `ForumBackend`.
+
 ## [1.10.1] — 2026-05-06
 
 ### Исправлено (критично, custom-backend)

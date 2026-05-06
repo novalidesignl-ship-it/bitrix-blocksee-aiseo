@@ -180,6 +180,17 @@ class CustomBackend implements Backend
             ? !empty($opts['auto_approve'])
             : ($cfg['active_default'] === 'Y');
 
+        // Дата публикации: если в настройках включён random-range — каждому
+        // отзыву случайный таймстамп в окне (как у ForumBackend); иначе now().
+        // ACTIVE_FROM почти всегда required в кастомных инфоблоках отзывов
+        // (в b_iblock_fields IS_REQUIRED='Y'), без него Add() отклоняется.
+        $dateFrom = (int)($opts['date_from'] ?? 0);
+        $dateTo = (int)($opts['date_to'] ?? 0);
+        $useDateRange = $dateFrom > 0 && $dateTo > 0;
+        if ($useDateRange && $dateFrom > $dateTo) {
+            [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+        }
+
         $contentPropCode = '';
         $contentTarget = $cfg['content_target'];
         if (strncmp($contentTarget, Options::REVIEWS_CUSTOM_TARGET_PROPERTY_PREFIX, strlen(Options::REVIEWS_CUSTOM_TARGET_PROPERTY_PREFIX)) === 0) {
@@ -200,10 +211,12 @@ class CustomBackend implements Backend
             $rating = max(1, min(5, (int)($r['rating'] ?? 5)));
             if ($author === '' || $content === '') continue;
 
+            $ts = $useDateRange ? random_int($dateFrom, $dateTo) : time();
             $fields = [
                 'IBLOCK_ID' => $cfg['iblock'],
                 'NAME' => $author,
                 'ACTIVE' => $autoApprove ? 'Y' : 'N',
+                'ACTIVE_FROM' => \ConvertTimeStamp($ts, 'FULL'),
             ];
 
             // Контент — в выбранное место
