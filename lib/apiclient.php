@@ -173,14 +173,28 @@ class ApiClient
             if (!is_array($r)) continue;
             $author = trim((string)($r['author_name'] ?? ''));
             $content = TextSanitizer::stripEmoji((string)($r['content'] ?? ''));
-            $rating = (int)($r['rating'] ?? 5);
-            if ($rating < 1 || $rating > 5) $rating = 5;
+            // Rating: float-safe (диапазон 4.5-5.0 с шагом 0.1). Раньше int-каст
+            // обрезал 4.7→4, что выходило за границы заданного диапазона.
+            $rating = (float)($r['rating'] ?? 5);
+            if ($rating < 1.0) $rating = 5.0;
+            if ($rating > 5.0) $rating = 5.0;
+            $rating = round($rating, 1);
             if ($author === '' || trim($content) === '') continue;
-            $clean[] = [
+            $reviewClean = [
                 'author_name' => $author,
                 'content' => $content,
                 'rating' => $rating,
             ];
+            // Split-режим: пробрасываем plusses/minuses если они пришли от сервера.
+            // Раньше они стрипались — поэтому CustomBackend всегда видел только три
+            // поля и записывал заглушки «—» в PLUSSES/MINUSES.
+            if (isset($r['plusses']) && is_string($r['plusses']) && trim($r['plusses']) !== '') {
+                $reviewClean['plusses'] = TextSanitizer::stripEmoji((string)$r['plusses']);
+            }
+            if (isset($r['minuses']) && is_string($r['minuses']) && trim($r['minuses']) !== '') {
+                $reviewClean['minuses'] = TextSanitizer::stripEmoji((string)$r['minuses']);
+            }
+            $clean[] = $reviewClean;
         }
         if (!$clean) {
             return ['success' => false, 'error' => 'All reviews were empty after sanitization'];
