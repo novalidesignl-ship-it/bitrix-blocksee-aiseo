@@ -65,8 +65,13 @@ class ReviewsGenerator
 
         $allReviews = [];
         $lastError = '';
+        $rMin = (float)($baseSettings['rating_min'] ?? 5.0);
+        $rMax = (float)($baseSettings['rating_max'] ?? 5.0);
         foreach ($scenarios as $scenario) {
             $perRequest = $baseSettings;
+            // На каждый отзыв — своя случайная оценка в [min, max] с шагом 0.1.
+            // Если min == max (фикс-оценка) — все отзывы получают одно значение.
+            $perRequest['rating'] = Options::pickRandomRating($rMin, $rMax);
             $extra = "Сценарий и формат этого конкретного отзыва: " . $scenario
                 . "\n\n" . $globalRules;
             $perRequest['custom_prompt'] = $userPrompt !== ''

@@ -110,7 +110,9 @@ class ApiClient
             'settings' => [
                 'min_words' => (int)($settings['min_words'] ?? 20),
                 'max_words' => (int)($settings['max_words'] ?? 60),
-                'rating' => (int)($settings['rating'] ?? 5),
+                // float, чтобы поддержать диапазонные оценки (4.5-5.0). Серверный
+                // BPRG принимает оба формата — int или float.
+                'rating' => (float)($settings['rating'] ?? 5),
                 'custom_prompt' => (string)($settings['custom_prompt'] ?? ''),
                 'temperature' => (float)($settings['temperature'] ?? 0.8),
                 'creative_mode' => !empty($settings['creative_mode']),

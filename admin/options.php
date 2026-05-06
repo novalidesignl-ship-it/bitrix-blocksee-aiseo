@@ -71,7 +71,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_bitrix_sessid()) {
         Options::set('reviews_per_product', max(1, min(50, (int)($_POST['reviews_per_product'] ?? 3))));
         Options::set('reviews_min_words', max(10, (int)($_POST['reviews_min_words'] ?? 20)));
         Options::set('reviews_max_words', max(10, (int)($_POST['reviews_max_words'] ?? 60)));
-        Options::set('reviews_default_rating', max(1, min(5, (int)($_POST['reviews_default_rating'] ?? 5))));
+        // Диапазон оценок: принимаем `5`, `4.5-5.0`, `4-5` и т.п. Парсер валидирует
+        // и клипует к [1.0, 5.0]. При вводе одного числа min=max (фикс-оценка).
+        [$rMin, $rMax] = Options::parseReviewsRatingRange((string)($_POST['reviews_rating_range'] ?? ''));
+        Options::set('reviews_rating_min', (string)$rMin);
+        Options::set('reviews_rating_max', (string)$rMax);
+        // Очищаем легаси-опцию, чтобы не подмешивалась миграционной логикой
+        Options::set('reviews_default_rating', '');
         Options::set('reviews_custom_prompt', (string)($_POST['reviews_custom_prompt'] ?? ''));
         Options::set('reviews_auto_approve', isset($_POST['reviews_auto_approve']) ? 'Y' : 'N');
         Options::set('reviews_date_range_enabled', isset($_POST['reviews_date_range_enabled']) ? 'Y' : 'N');
@@ -268,9 +274,24 @@ $APPLICATION->SetAdditionalCSS(Options::getAssetUrl('/assets/admin.css'));
                     </label>
                 </p>
                 <p>
-                    <label>Средний рейтинг (1-5):<br>
-                        <input type="number" min="1" max="5" name="reviews_default_rating" value="<?= (int)$reviewsSettings['rating'] ?>">
+                    <label>Оценка отзыва (1-5):<br>
+                        <?php
+                        $rMin = (float)$reviewsSettings['rating_min'];
+                        $rMax = (float)$reviewsSettings['rating_max'];
+                        // Если min==max и значение целое — выводим как «5», иначе диапазон.
+                        if ($rMin === $rMax) {
+                            $rangeText = (fmod($rMin, 1.0) === 0.0) ? (string)(int)$rMin : rtrim(rtrim(number_format($rMin, 1, '.', ''), '0'), '.');
+                            if ($rangeText === '') $rangeText = (string)$rMin;
+                        } else {
+                            $rangeText = number_format($rMin, 1, '.', '') . '-' . number_format($rMax, 1, '.', '');
+                        }
+                        ?>
+                        <input type="text" name="reviews_rating_range" value="<?= htmlspecialcharsbx($rangeText) ?>" size="20" placeholder="4.5-5.0">
                     </label>
+                    <br><small>
+                        Фикс-оценка: <code>5</code>, <code>4</code>. Случайный диапазон: <code>4.5-5.0</code>, <code>4.7-5.0</code>. Шаг 0.1.<br>
+                        На каждый отзыв выбирается случайное значение в диапазоне — это выглядит реалистичнее, чем «у всех одинаковые 5». Запятую как десятичный разделитель парсер тоже примет (<code>4,5-5,0</code>).
+                    </small>
                 </p>
                 <p>
                     <label>

@@ -213,7 +213,8 @@ class CustomBackend implements Backend
         foreach ($reviews as $r) {
             $author = TextSanitizer::stripEmoji(trim((string)($r['author_name'] ?? '')));
             $content = TextSanitizer::stripEmoji(trim((string)($r['content'] ?? '')));
-            $rating = max(1, min(5, (int)($r['rating'] ?? 5)));
+            // Оценка может быть float (4.5-5.0 диапазон). Округляем до 0.1.
+            $rating = round(max(1.0, min(5.0, (float)($r['rating'] ?? 5))), 1);
             if ($author === '' || $content === '') continue;
 
             $ts = $useDateRange ? random_int($dateFrom, $dateTo) : time();

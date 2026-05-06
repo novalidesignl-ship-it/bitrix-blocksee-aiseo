@@ -95,15 +95,85 @@ class Options
 
     public static function getReviewsSettings(): array
     {
+        [$ratingMin, $ratingMax] = self::getReviewsRatingMinMax();
         return [
             'min_words' => max(10, (int)self::get('reviews_min_words', '20')),
             'max_words' => max(10, (int)self::get('reviews_max_words', '60')),
-            'rating' => max(1, min(5, (int)self::get('reviews_default_rating', '5'))),
+            // Legacy ключ 'rating' оставлен для обратной совместимости с серверной
+            'rating' => $ratingMax,
+            'rating_min' => $ratingMin,
+            'rating_max' => $ratingMax,
             'custom_prompt' => (string)self::get('reviews_custom_prompt', ''),
             'temperature' => (float)self::get('temperature', '0.7'),
             'creative_mode' => self::get('creative_mode', 'N') === 'Y',
             'quality' => self::getQualityTier(),
         ];
+    }
+
+    /**
+     * Возвращает [min, max] оценок отзывов как float'ы. По умолчанию — 4.5..5.0
+     * (живой реалистичный диапазон без 4.0 и ниже). Поддерживается миграция
+     * со старого `reviews_default_rating` (int 1-5) на первую установку без новых
+     * настроек: и min, и max становятся равны старому значению.
+     *
+     * @return array{0:float, 1:float}
+     */
+    public static function getReviewsRatingMinMax(): array
+    {
+        $minRaw = self::get('reviews_rating_min', '');
+        $maxRaw = self::get('reviews_rating_max', '');
+        if ($minRaw === '' && $maxRaw === '') {
+            // Миграция: старая опция reviews_default_rating (int) — если задана,
+            // делаем фикс-значение; иначе дефолт 4.5..5.0.
+            $legacy = self::get('reviews_default_rating', '');
+            if ($legacy !== '') {
+                $v = max(1.0, min(5.0, (float)$legacy));
+                return [$v, $v];
+            }
+            return [4.5, 5.0];
+        }
+        $min = (float)($minRaw !== '' ? $minRaw : $maxRaw);
+        $max = (float)($maxRaw !== '' ? $maxRaw : $minRaw);
+        if ($min < 1.0) $min = 1.0;
+        if ($max > 5.0) $max = 5.0;
+        if ($min > $max) [$min, $max] = [$max, $min];
+        return [$min, $max];
+    }
+
+    /**
+     * Парсит пользовательский ввод в формате `5`, `4.5-5.0`, `4-5`, `4,5-5,0`,
+     * `4.5 - 5.0` в [min, max]. Запятая принимается как десятичная (русская
+     * локаль). За границы диапазона [1.0, 5.0] клипуется.
+     *
+     * @return array{0:float, 1:float}
+     */
+    public static function parseReviewsRatingRange(string $input): array
+    {
+        $input = trim(str_replace([',', ' '], ['.', ''], $input));
+        if ($input === '') return [4.5, 5.0];
+        if (strpos($input, '-') !== false) {
+            $parts = explode('-', $input, 2);
+            $min = (float)($parts[0] ?? 0);
+            $max = (float)($parts[1] ?? 0);
+        } else {
+            $min = $max = (float)$input;
+        }
+        if ($min < 1.0) $min = 1.0;
+        if ($max > 5.0) $max = 5.0;
+        if ($min > $max) [$min, $max] = [$max, $min];
+        return [$min, $max];
+    }
+
+    /**
+     * Случайное значение оценки в [min, max] с шагом 0.1.
+     */
+    public static function pickRandomRating(float $min, float $max): float
+    {
+        if ($min >= $max) return round($max, 1);
+        $minTenths = (int)round($min * 10);
+        $maxTenths = (int)round($max * 10);
+        $r = mt_rand($minTenths, $maxTenths);
+        return round($r / 10, 1);
     }
 
     public static function getReviewsAutoApprove(): bool
