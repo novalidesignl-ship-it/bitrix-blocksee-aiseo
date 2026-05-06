@@ -143,6 +143,7 @@ function bsee_stars(int $rating): string
                     <option value="<?= Options::REVIEWS_SOURCE_FORUM ?>" <?= $currentSource === Options::REVIEWS_SOURCE_FORUM ? 'selected' : '' ?>>Форум</option>
                     <option value="<?= Options::REVIEWS_SOURCE_BLOG ?>" <?= $currentSource === Options::REVIEWS_SOURCE_BLOG ? 'selected' : '' ?>>Блог</option>
                     <option value="<?= Options::REVIEWS_SOURCE_IBLOCK ?>" <?= $currentSource === Options::REVIEWS_SOURCE_IBLOCK ? 'selected' : '' ?>>Кастомный инфоблок (Aspro Max)</option>
+                    <option value="<?= Options::REVIEWS_SOURCE_CUSTOM ?>" <?= $currentSource === Options::REVIEWS_SOURCE_CUSTOM ? 'selected' : '' ?>>Из настроек плагина</option>
                     <option value="<?= Options::REVIEWS_SOURCE_AUTO ?>" <?= $currentSource === Options::REVIEWS_SOURCE_AUTO ? 'selected' : '' ?>>Авто</option>
                 </select>
                 <span id="bsee-source-status" class="bsee-muted"></span>

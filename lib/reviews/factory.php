@@ -18,6 +18,9 @@ class Factory
         if ($source === Options::REVIEWS_SOURCE_IBLOCK) {
             return new IblockBackend();
         }
+        if ($source === Options::REVIEWS_SOURCE_CUSTOM) {
+            return new CustomBackend();
+        }
         return null;
     }
 

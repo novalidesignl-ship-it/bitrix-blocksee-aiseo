@@ -12,7 +12,14 @@ class Options
     public const REVIEWS_SOURCE_FORUM = 'forum';
     public const REVIEWS_SOURCE_BLOG = 'blog';
     public const REVIEWS_SOURCE_IBLOCK = 'iblock';
+    public const REVIEWS_SOURCE_CUSTOM = 'custom';
     public const REVIEWS_BLOG_URL_DEFAULT = 'catalog_comments';
+
+    public const REVIEWS_CUSTOM_DIRECTION_FORWARD = 'forward'; // E-property на товаре указывает на отзывы (Aspro Max)
+    public const REVIEWS_CUSTOM_DIRECTION_REVERSE = 'reverse'; // E-property на отзыве указывает на товар (tsar-climat и т.п.)
+    public const REVIEWS_CUSTOM_TARGET_DETAIL = 'DETAIL_TEXT';
+    public const REVIEWS_CUSTOM_TARGET_PREVIEW = 'PREVIEW_TEXT';
+    public const REVIEWS_CUSTOM_TARGET_PROPERTY_PREFIX = 'PROPERTY:';
 
     public static function get(string $key, $default = '')
     {
@@ -214,8 +221,69 @@ class Options
     public static function getReviewsSource(): string
     {
         $val = (string)self::get('reviews_source', self::REVIEWS_SOURCE_AUTO);
-        $allowed = [self::REVIEWS_SOURCE_FORUM, self::REVIEWS_SOURCE_BLOG, self::REVIEWS_SOURCE_IBLOCK];
+        $allowed = [
+            self::REVIEWS_SOURCE_FORUM,
+            self::REVIEWS_SOURCE_BLOG,
+            self::REVIEWS_SOURCE_IBLOCK,
+            self::REVIEWS_SOURCE_CUSTOM,
+        ];
         return in_array($val, $allowed, true) ? $val : self::REVIEWS_SOURCE_AUTO;
+    }
+
+    /* ==================== Custom reviews backend (v1.10.0+) ==================== */
+
+    public static function getReviewsCustomIblockId(): int
+    {
+        return (int)self::get('reviews_custom_iblock', 0);
+    }
+
+    /**
+     * Направление связи товар↔отзыв:
+     *   'forward' — E-свойство НА ТОВАРЕ хранит ID отзыва(ов). Так у Aspro Max
+     *               (PRODUCT_REVIEWS) — multiple свойство.
+     *   'reverse' — E-свойство НА ОТЗЫВЕ хранит ID товара. Так у самописных схем
+     *               (tsar-climat: свойство PRODUCT в инфоблоке отзывов).
+     */
+    public static function getReviewsCustomLinkDirection(): string
+    {
+        $val = (string)self::get('reviews_custom_link_direction', self::REVIEWS_CUSTOM_DIRECTION_REVERSE);
+        $allowed = [self::REVIEWS_CUSTOM_DIRECTION_FORWARD, self::REVIEWS_CUSTOM_DIRECTION_REVERSE];
+        return in_array($val, $allowed, true) ? $val : self::REVIEWS_CUSTOM_DIRECTION_REVERSE;
+    }
+
+    public static function getReviewsCustomLinkProp(): string
+    {
+        return trim((string)self::get('reviews_custom_link_prop', ''));
+    }
+
+    public static function getReviewsCustomRatingProp(): string
+    {
+        return trim((string)self::get('reviews_custom_rating_prop', ''));
+    }
+
+    public static function getReviewsCustomAuthorProp(): string
+    {
+        return trim((string)self::get('reviews_custom_author_prop', ''));
+    }
+
+    /**
+     * Куда пишется тело отзыва: 'DETAIL_TEXT' / 'PREVIEW_TEXT' / 'PROPERTY:CODE'.
+     * По умолчанию DETAIL_TEXT (универсальный вариант под большинство тем).
+     */
+    public static function getReviewsCustomContentTarget(): string
+    {
+        $val = trim((string)self::get('reviews_custom_content_target', self::REVIEWS_CUSTOM_TARGET_DETAIL));
+        return $val !== '' ? $val : self::REVIEWS_CUSTOM_TARGET_DETAIL;
+    }
+
+    /**
+     * 'Y' — новый отзыв создаётся с ACTIVE='Y' (сразу виден на сайте).
+     * 'N' — ACTIVE='N' (отправляется на модерацию). По умолчанию Y, потому
+     *        что AI-сгенерированные отзывы делает сам админ — модерация излишня.
+     */
+    public static function getReviewsCustomActiveDefault(): string
+    {
+        return self::get('reviews_custom_active_default', 'Y') === 'N' ? 'N' : 'Y';
     }
 
     public static function getReviewsBlogUrl(): string
@@ -236,6 +304,12 @@ class Options
     public static function resolveReviewsSource(): string
     {
         $configured = self::getReviewsSource();
+        if ($configured === self::REVIEWS_SOURCE_CUSTOM) {
+            // custom backend: проверяем что хотя бы iblock задан. Без этого
+            // backend упадёт на первом запросе — лучше fallback на пусто и
+            // явно отрисуем предупреждение в UI.
+            return self::getReviewsCustomIblockId() > 0 ? self::REVIEWS_SOURCE_CUSTOM : '';
+        }
         if ($configured === self::REVIEWS_SOURCE_IBLOCK) {
             // iblock backend всегда доступен пока активен модуль iblock —
             // структуру он сам детектит на конкретном товарном инфоблоке.

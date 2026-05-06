@@ -2,6 +2,19 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/) · Версионирование: [SemVer](https://semver.org/lang/ru/).
 
+## [1.10.0] — 2026-05-06
+
+### Добавлено
+- **Custom-backend для отзывов** — новый источник `«Из настроек плагина»`. Покрывает самописные схемы хранения отзывов на Битриксе (например, tsar-climat: на отзыве свойство `PRODUCT` указывает на товар, плюс кастомные коды `RATING`/`AUTHOR`/`PLUSSES`/`MINUSES`).
+- В отличие от существующего `iblock`-backend'а (auto-detect под Aspro Max паттерн `PRODUCT_REVIEWS` на товаре) — здесь все параметры задаются вручную в админке: ID инфоблока отзывов, направление связи (forward/reverse), коды свойств связи/оценки/автора, куда писать тело отзыва (DETAIL_TEXT / PREVIEW_TEXT / PROPERTY:CODE), активен ли отзыв сразу после создания.
+- Новый класс `Blocksee\Aiseo\Reviews\CustomBackend` (`lib/reviews/custombackend.php`, ~330 строк) реализует интерфейс `Backend` целиком из настроек, без auto-detect'а.
+- В `admin/options.php` секция «Кастомный инфоблок отзывов» с дропдауном инфоблоков и текстовыми полями для кодов свойств. Видна всегда, активируется выбором источника `«Из настроек плагина»` сверху.
+- В селекторе «Куда сохранять» на страницах `admin/reviews.php` и `admin/reviews_urls.php` появился пункт «Из настроек плагина».
+- Затронуто: `lib/options.php` (новые константы и геттеры), `lib/reviews/custombackend.php` (новый), `lib/reviews/factory.php`, `lib/controller/reviews.php`, `include.php` (autoload), `admin/options.php`, `admin/reviews.php`, `admin/reviews_urls.php`.
+
+### Совместимость
+- Старые источники (`forum`, `blog`, `iblock` auto-detect, `auto`) работают без изменений. Custom-backend подключается только при явном выборе.
+
 ## [1.9.13] — 2026-05-06
 
 ### Добавлено

@@ -44,11 +44,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_bitrix_sessid()) {
             Options::REVIEWS_SOURCE_FORUM,
             Options::REVIEWS_SOURCE_BLOG,
             Options::REVIEWS_SOURCE_IBLOCK,
+            Options::REVIEWS_SOURCE_CUSTOM,
         ];
         if (!in_array($newSource, $allowedSources, true)) {
             $newSource = Options::REVIEWS_SOURCE_AUTO;
         }
         Options::set('reviews_source', $newSource);
+
+        // Custom reviews backend (v1.10.0+)
+        Options::set('reviews_custom_iblock', (int)($_POST['reviews_custom_iblock'] ?? 0));
+        $customDir = (string)($_POST['reviews_custom_link_direction'] ?? Options::REVIEWS_CUSTOM_DIRECTION_REVERSE);
+        if (!in_array($customDir, [Options::REVIEWS_CUSTOM_DIRECTION_FORWARD, Options::REVIEWS_CUSTOM_DIRECTION_REVERSE], true)) {
+            $customDir = Options::REVIEWS_CUSTOM_DIRECTION_REVERSE;
+        }
+        Options::set('reviews_custom_link_direction', $customDir);
+        Options::set('reviews_custom_link_prop', strtoupper(trim((string)($_POST['reviews_custom_link_prop'] ?? ''))));
+        Options::set('reviews_custom_rating_prop', strtoupper(trim((string)($_POST['reviews_custom_rating_prop'] ?? ''))));
+        Options::set('reviews_custom_author_prop', strtoupper(trim((string)($_POST['reviews_custom_author_prop'] ?? ''))));
+        $contentTarget = trim((string)($_POST['reviews_custom_content_target'] ?? Options::REVIEWS_CUSTOM_TARGET_DETAIL));
+        if ($contentTarget === '') $contentTarget = Options::REVIEWS_CUSTOM_TARGET_DETAIL;
+        Options::set('reviews_custom_content_target', $contentTarget);
+        Options::set('reviews_custom_active_default', isset($_POST['reviews_custom_active_default']) ? 'Y' : 'N');
         Options::set('reviews_blog_url', trim((string)($_POST['reviews_blog_url'] ?? 'catalog_comments')) ?: 'catalog_comments');
         Options::set('reviews_forum_id', (int)($_POST['reviews_forum_id'] ?? 0));
         Options::set('reviews_per_product', max(1, min(50, (int)($_POST['reviews_per_product'] ?? 3))));
@@ -89,6 +105,24 @@ $reviewsAutoApprove = Options::getReviewsAutoApprove();
 $reviewsDateRangeEnabled = Options::getReviewsDateRangeEnabled();
 $reviewsDateFrom = Options::getReviewsDateFrom();
 $reviewsDateTo = Options::getReviewsDateTo();
+
+// Custom reviews backend (v1.10.0+)
+$reviewsCustomIblock = Options::getReviewsCustomIblockId();
+$reviewsCustomDirection = Options::getReviewsCustomLinkDirection();
+$reviewsCustomLinkProp = Options::getReviewsCustomLinkProp();
+$reviewsCustomRatingProp = Options::getReviewsCustomRatingProp();
+$reviewsCustomAuthorProp = Options::getReviewsCustomAuthorProp();
+$reviewsCustomContentTarget = Options::getReviewsCustomContentTarget();
+$reviewsCustomActiveDefault = Options::getReviewsCustomActiveDefault();
+
+// Список ВСЕХ активных инфоблоков (отзывы могут лежать в любом типе, не только catalog).
+$allIblocks = [];
+if (Loader::includeModule('iblock')) {
+    $rsIb = \CIBlock::GetList(['SORT' => 'ASC', 'NAME' => 'ASC'], ['ACTIVE' => 'Y']);
+    while ($ib = $rsIb->Fetch()) {
+        $allIblocks[(int)$ib['ID']] = $ib['NAME'] . ' [' . $ib['ID'] . ', тип ' . $ib['IBLOCK_TYPE_ID'] . ']';
+    }
+}
 
 // Catalog iblocks dropdown
 $catalogIblocks = Options::getCatalogIblocks();
@@ -182,14 +216,18 @@ $APPLICATION->SetAdditionalCSS(Options::getAssetUrl('/assets/admin.css'));
                                 Forum — топики (стандарт Битрикса)<?= !$forumModuleAvailable ? ' — модуль forum не установлен' : '' ?>
                             </option>
                             <option value="<?= Options::REVIEWS_SOURCE_IBLOCK ?>" <?= $reviewsSource === Options::REVIEWS_SOURCE_IBLOCK ? 'selected' : '' ?>>
-                                Кастомный инфоблок (Aspro Max и подобные сборки)
+                                Кастомный инфоблок — auto-detect (Aspro Max и подобные сборки)
+                            </option>
+                            <option value="<?= Options::REVIEWS_SOURCE_CUSTOM ?>" <?= $reviewsSource === Options::REVIEWS_SOURCE_CUSTOM ? 'selected' : '' ?>>
+                                Из настроек плагина (произвольная схема — см. секцию ниже)
                             </option>
                         </select>
                     </label>
                     <br><small>
                         Blog — для Aspro Premier и совместимых (компонент <code>bitrix:catalog.comments</code> с <code>BLOG_USE='Y'</code>).<br>
                         Forum — стандартный Битрикс-форум по XML_ID товара.<br>
-                        Кастомный инфоблок — для Aspro Max и сборок, где отзывы лежат в отдельном инфоблоке, а товары привязаны через свойство <code>PRODUCT_REVIEWS</code> / <code>LINK_REVIEWS</code>. Структура определяется автоматически.
+                        Кастомный инфоблок (auto-detect) — для Aspro Max и сборок со свойством <code>PRODUCT_REVIEWS</code>/<code>LINK_REVIEWS</code> на товаре. Структура определяется автоматически.<br>
+                        Из настроек плагина — для самописных схем (например tsar-climat: на отзыве свойство <code>PRODUCT</code> указывает на товар). Все коды свойств задаются вручную в секции «Кастомный инфоблок отзывов» ниже.
                     </small>
                 </p>
                 <p>
@@ -258,6 +296,81 @@ $APPLICATION->SetAdditionalCSS(Options::getAssetUrl('/assets/admin.css'));
                         <textarea name="reviews_custom_prompt" rows="5" cols="80"><?= htmlspecialcharsbx((string)$reviewsSettings['custom_prompt']) ?></textarea>
                     </label>
                     <br><small>Подсказка модели: стиль, детали, какие слова использовать или избегать.</small>
+                </p>
+            </fieldset>
+
+            <fieldset>
+                <legend>Кастомный инфоблок отзывов (для источника «Из настроек плагина»)</legend>
+                <p><small>
+                    Используется только когда выбран источник <strong>«Из настроек плагина»</strong>. Позволяет задать произвольную схему хранения отзывов: какой инфоблок, в каком направлении связь товар↔отзыв, какие коды свойств для оценки/автора, куда пишется тело отзыва.
+                </small></p>
+                <p>
+                    <label>Инфоблок отзывов:<br>
+                        <select name="reviews_custom_iblock">
+                            <option value="0">— не выбран —</option>
+                            <?php foreach ($allIblocks as $ibId => $ibLabel): ?>
+                                <option value="<?= $ibId ?>" <?= $ibId === $reviewsCustomIblock ? 'selected' : '' ?>><?= htmlspecialcharsbx($ibLabel) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                </p>
+                <p>
+                    <label>Направление связи товар ↔ отзыв:<br>
+                        <select name="reviews_custom_link_direction">
+                            <option value="<?= Options::REVIEWS_CUSTOM_DIRECTION_REVERSE ?>" <?= $reviewsCustomDirection === Options::REVIEWS_CUSTOM_DIRECTION_REVERSE ? 'selected' : '' ?>>
+                                Обратное (свойство на отзыве указывает на товар)
+                            </option>
+                            <option value="<?= Options::REVIEWS_CUSTOM_DIRECTION_FORWARD ?>" <?= $reviewsCustomDirection === Options::REVIEWS_CUSTOM_DIRECTION_FORWARD ? 'selected' : '' ?>>
+                                Прямое (свойство на товаре указывает на отзывы — как Aspro Max)
+                            </option>
+                        </select>
+                    </label>
+                    <br><small>
+                        Обратное — самый распространённый вариант для самописных тем (tsar-climat, и аналогичные). Прямое — Aspro Max паттерн с multiple-свойством <code>PRODUCT_REVIEWS</code> на товаре.
+                    </small>
+                </p>
+                <p>
+                    <label>Код свойства связи (тип «Привязка к элементам», E):<br>
+                        <input type="text" name="reviews_custom_link_prop" value="<?= htmlspecialcharsbx($reviewsCustomLinkProp) ?>" size="30" placeholder="PRODUCT">
+                    </label>
+                    <br><small>
+                        Код E-свойства, которое связывает отзыв с товаром (или товар с отзывами при прямом направлении). Примеры: <code>PRODUCT</code> (tsar-climat), <code>ELEMENT</code>, <code>LINK_PRODUCT</code>, <code>PRODUCT_REVIEWS</code>.
+                    </small>
+                </p>
+                <p>
+                    <label>Код свойства оценки (тип «Число», N) — опционально:<br>
+                        <input type="text" name="reviews_custom_rating_prop" value="<?= htmlspecialcharsbx($reviewsCustomRatingProp) ?>" size="30" placeholder="RATING">
+                    </label>
+                    <br><small>Если оценок в схеме нет — оставьте пустым.</small>
+                </p>
+                <p>
+                    <label>Код свойства автора (тип «Строка», S) — опционально:<br>
+                        <input type="text" name="reviews_custom_author_prop" value="<?= htmlspecialcharsbx($reviewsCustomAuthorProp) ?>" size="30" placeholder="AUTHOR">
+                    </label>
+                    <br><small>Если не задано — имя автора пишется в поле <code>NAME</code> элемента отзыва.</small>
+                </p>
+                <p>
+                    <label>Куда писать текст отзыва:<br>
+                        <?php
+                        // content_target может быть DETAIL_TEXT / PREVIEW_TEXT / PROPERTY:CODE.
+                        // Если значение начинается с PROPERTY: — берём пользовательский ввод, иначе тип DETAIL/PREVIEW.
+                        $isPropTarget = strncmp($reviewsCustomContentTarget, Options::REVIEWS_CUSTOM_TARGET_PROPERTY_PREFIX, strlen(Options::REVIEWS_CUSTOM_TARGET_PROPERTY_PREFIX)) === 0;
+                        $propTargetCode = $isPropTarget ? substr($reviewsCustomContentTarget, strlen(Options::REVIEWS_CUSTOM_TARGET_PROPERTY_PREFIX)) : '';
+                        ?>
+                        <input type="text" name="reviews_custom_content_target" value="<?= htmlspecialcharsbx($reviewsCustomContentTarget) ?>" size="30" placeholder="DETAIL_TEXT">
+                    </label>
+                    <br><small>
+                        Допустимые значения: <code>DETAIL_TEXT</code> (по умолчанию), <code>PREVIEW_TEXT</code>, либо <code>PROPERTY:КОД</code> (например <code>PROPERTY:COMMENT</code>) — если тело должно лежать в отдельном строковом свойстве.
+                    </small>
+                </p>
+                <p>
+                    <label>
+                        <input type="checkbox" name="reviews_custom_active_default" value="Y" <?= $reviewsCustomActiveDefault === 'Y' ? 'checked' : '' ?>>
+                        Создавать новые отзывы сразу активными (без модерации)
+                    </label>
+                    <br><small>
+                        Если выключено — отзыв создаётся с <code>ACTIVE='N'</code> и попадает в очередь модерации в админке инфоблока. Для AI-генерируемых отзывов обычно достаточно включить — генерирует сам админ.
+                    </small>
                 </p>
             </fieldset>
 

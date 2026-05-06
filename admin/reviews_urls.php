@@ -44,6 +44,11 @@ if ($src === Options::REVIEWS_SOURCE_BLOG) {
 } elseif ($src === Options::REVIEWS_SOURCE_FORUM) {
     $forumId = Options::getReviewsForumId();
     $srcLabel = 'Форум' . ($forumId > 0 ? ' ID ' . $forumId : ' (не задан)');
+} elseif ($src === Options::REVIEWS_SOURCE_IBLOCK) {
+    $srcLabel = 'Кастомный инфоблок (auto-detect)';
+} elseif ($src === Options::REVIEWS_SOURCE_CUSTOM) {
+    $cIb = Options::getReviewsCustomIblockId();
+    $srcLabel = 'Из настроек плагина · ID инфоблока ' . ($cIb > 0 ? $cIb : '<span style="color:#dc2626;">не задан</span>');
 } else {
     $srcLabel = '<span style="color:#dc2626;">не настроен</span>';
 }
@@ -59,6 +64,7 @@ if ($src === Options::REVIEWS_SOURCE_BLOG) {
                     <option value="<?= Options::REVIEWS_SOURCE_FORUM ?>" <?= $currentSource === Options::REVIEWS_SOURCE_FORUM ? 'selected' : '' ?>>Форум</option>
                     <option value="<?= Options::REVIEWS_SOURCE_BLOG ?>" <?= $currentSource === Options::REVIEWS_SOURCE_BLOG ? 'selected' : '' ?>>Блог</option>
                     <option value="<?= Options::REVIEWS_SOURCE_IBLOCK ?>" <?= $currentSource === Options::REVIEWS_SOURCE_IBLOCK ? 'selected' : '' ?>>Кастомный инфоблок (Aspro Max)</option>
+                    <option value="<?= Options::REVIEWS_SOURCE_CUSTOM ?>" <?= $currentSource === Options::REVIEWS_SOURCE_CUSTOM ? 'selected' : '' ?>>Из настроек плагина</option>
                     <option value="<?= Options::REVIEWS_SOURCE_AUTO ?>" <?= $currentSource === Options::REVIEWS_SOURCE_AUTO ? 'selected' : '' ?>>Авто</option>
                 </select>
                 <span id="bsee-source-status" class="bsee-muted"></span>

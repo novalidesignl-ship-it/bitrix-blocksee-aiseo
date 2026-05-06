@@ -137,6 +137,7 @@ class Reviews extends Controller
             Options::REVIEWS_SOURCE_FORUM,
             Options::REVIEWS_SOURCE_BLOG,
             Options::REVIEWS_SOURCE_IBLOCK,
+            Options::REVIEWS_SOURCE_CUSTOM,
         ];
         if (!in_array($source, $allowed, true)) {
             $this->addError(new Error('Недопустимый источник: ' . $source));
