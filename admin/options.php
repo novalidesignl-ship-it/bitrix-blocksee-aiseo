@@ -65,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_bitrix_sessid()) {
         if ($contentTarget === '') $contentTarget = Options::REVIEWS_CUSTOM_TARGET_DETAIL;
         Options::set('reviews_custom_content_target', $contentTarget);
         Options::set('reviews_custom_active_default', isset($_POST['reviews_custom_active_default']) ? 'Y' : 'N');
+        Options::set('reviews_custom_split_pros_cons', isset($_POST['reviews_custom_split_pros_cons']) ? 'Y' : 'N');
         Options::set('reviews_blog_url', trim((string)($_POST['reviews_blog_url'] ?? 'catalog_comments')) ?: 'catalog_comments');
         Options::set('reviews_forum_id', (int)($_POST['reviews_forum_id'] ?? 0));
         Options::set('reviews_per_product', max(1, min(50, (int)($_POST['reviews_per_product'] ?? 3))));
@@ -114,6 +115,7 @@ $reviewsCustomRatingProp = Options::getReviewsCustomRatingProp();
 $reviewsCustomAuthorProp = Options::getReviewsCustomAuthorProp();
 $reviewsCustomContentTarget = Options::getReviewsCustomContentTarget();
 $reviewsCustomActiveDefault = Options::getReviewsCustomActiveDefault();
+$reviewsCustomSplitProsCons = Options::getReviewsCustomSplitProsCons();
 
 // Список ВСЕХ активных инфоблоков (отзывы могут лежать в любом типе, не только catalog).
 $allIblocks = [];
@@ -370,6 +372,15 @@ $APPLICATION->SetAdditionalCSS(Options::getAssetUrl('/assets/admin.css'));
                     </label>
                     <br><small>
                         Если выключено — отзыв создаётся с <code>ACTIVE='N'</code> и попадает в очередь модерации в админке инфоблока. Для AI-генерируемых отзывов обычно достаточно включить — генерирует сам админ.
+                    </small>
+                </p>
+                <p>
+                    <label>
+                        <input type="checkbox" name="reviews_custom_split_pros_cons" value="Y" <?= $reviewsCustomSplitProsCons ? 'checked' : '' ?>>
+                        Заполнять «Достоинства» и «Недостатки» отдельно от текста
+                    </label>
+                    <br><small>
+                        AI вернёт три поля: <code>plusses</code>, <code>minuses</code>, <code>content</code>. Модуль запишет первые два в свойства инфоблока с кодом <code>PLUSSES</code>/<code>PROS</code> и <code>MINUSES</code>/<code>CONS</code> (поддерживаются часто встречающиеся варианты). <strong>Недостатки</strong> AI делает мизерными — либо «не заметил / ничего не могу сказать», либо мелкое замечание, либо косвенное наблюдение, без претензий. Включай если у тебя в инфоблоке отзывов есть отдельные поля для плюсов/минусов (как у tsar-climat). Если выключено — эти поля заполняются заглушкой <code>—</code>.
                     </small>
                 </p>
             </fieldset>

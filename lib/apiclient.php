@@ -115,6 +115,12 @@ class ApiClient
                 'temperature' => (float)($settings['temperature'] ?? 0.8),
                 'creative_mode' => !empty($settings['creative_mode']),
                 'quality' => (($settings['quality'] ?? 'standard') === 'high') ? 'high' : 'standard',
+                // Структурированный режим (split): просим AI вернуть plusses/minuses
+                // отдельно от content. Активируется когда в настройках модуля включён
+                // чекбокс «Заполнять Достоинства и Недостатки отдельно». Сервер
+                // (BitrixProductReviewsGenerator) поддерживает с v1.11+. На старом
+                // сервере флаг игнорируется — fallback на обычный режим.
+                'split_pros_cons' => Options::getReviewsCustomSplitProsCons(),
             ],
         ];
 

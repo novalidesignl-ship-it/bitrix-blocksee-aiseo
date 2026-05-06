@@ -202,6 +202,11 @@ class CustomBackend implements Backend
         // Соберём один раз, потом авто-заполним заглушками то, что AI не отдал.
         $requiredProps = $this->fetchRequiredProps($cfg['iblock']);
 
+        // Авто-определение кодов свойств для plusses/minuses в схеме инфоблока.
+        // Когда включён split-режим, AI возвращает поля 'plusses' / 'minuses' в
+        // каждом отзыве, и мы пишем их в свойства с подходящим кодом.
+        $semProps = $this->findSemanticProsConsProps($cfg['iblock']);
+
         $createdIds = [];
         $errors = [];
         $cie = new \CIBlockElement();
@@ -231,7 +236,7 @@ class CustomBackend implements Backend
                 $fields['DETAIL_TEXT_TYPE'] = 'text';
             }
 
-            // Properties: сначала из настроек, потом авто-заглушки
+            // Properties: сначала из настроек, потом split-режим, потом заглушки
             $propValues = [];
             if ($cfg['rating_prop'] !== '') $propValues[$cfg['rating_prop']] = $rating;
             if ($cfg['author_prop'] !== '') $propValues[$cfg['author_prop']] = $author;
@@ -239,6 +244,18 @@ class CustomBackend implements Backend
             if ($cfg['direction'] === Options::REVIEWS_CUSTOM_DIRECTION_REVERSE) {
                 // на отзыве свойство-связь хранит ID товара
                 $propValues[$cfg['link_prop']] = $elementId;
+            }
+
+            // Split-режим: AI вернул plusses/minuses отдельно — пишем их в
+            // соответствующие свойства инфоблока. Это перебивает заглушки «—»
+            // от fillRequiredStubs.
+            $plusses = isset($r['plusses']) ? TextSanitizer::stripEmoji(trim((string)$r['plusses'])) : '';
+            $minuses = isset($r['minuses']) ? TextSanitizer::stripEmoji(trim((string)$r['minuses'])) : '';
+            if ($plusses !== '' && $semProps['pros'] !== '') {
+                $propValues[$semProps['pros']] = $plusses;
+            }
+            if ($minuses !== '' && $semProps['cons'] !== '') {
+                $propValues[$semProps['cons']] = $minuses;
             }
 
             // Авто-заглушки для required-свойств, которые мы ещё не заполнили
@@ -463,6 +480,49 @@ class CustomBackend implements Backend
         if (isset($cache[$elementId])) return $cache[$elementId];
         $row = \CIBlockElement::GetByID($elementId)->Fetch();
         return $cache[$elementId] = $row ? (int)$row['IBLOCK_ID'] : 0;
+    }
+
+    /**
+     * Находит коды свойств для «достоинств» и «недостатков» в инфоблоке отзывов
+     * по списку часто встречающихся имён. Возвращает ['pros' => CODE, 'cons' => CODE]
+     * (пустые строки если кандидат не найден).
+     *
+     * Используется в split-режиме (когда AI возвращает plusses/minuses отдельно).
+     * Кандидаты — те же что в fillRequiredStubs(), но проверяются по ВСЕМ свойствам
+     * инфоблока, не только required: пользователь может иметь PLUSSES/MINUSES без
+     * IS_REQUIRED, и нам всё равно нужно их заполнить.
+     *
+     * @return array{pros:string, cons:string}
+     */
+    private function findSemanticProsConsProps(int $iblockId): array
+    {
+        static $cache = [];
+        if (isset($cache[$iblockId])) return $cache[$iblockId];
+        $out = ['pros' => '', 'cons' => ''];
+        if (!Loader::includeModule('iblock')) {
+            return $cache[$iblockId] = $out;
+        }
+        $rs = \Bitrix\Iblock\PropertyTable::getList([
+            'select' => ['CODE', 'PROPERTY_TYPE'],
+            'filter' => ['=IBLOCK_ID' => $iblockId, '=ACTIVE' => 'Y'],
+        ]);
+        $allCodes = [];
+        while ($p = $rs->fetch()) {
+            // Пишем plusses/minuses только в S-свойства; для других типов писать
+            // строку нельзя (N-проперти текст не примет, E — это связь с элементом).
+            if ((string)$p['PROPERTY_TYPE'] === 'S') {
+                $allCodes[] = strtoupper((string)$p['CODE']);
+            }
+        }
+        $prosCandidates = ['PLUSSES', 'PLUSES', 'PROS', 'PLUS', 'ADVANTAGES', 'GOOD'];
+        $consCandidates = ['MINUSES', 'CONS', 'MINUS', 'DISADVANTAGES', 'BAD'];
+        foreach ($prosCandidates as $cand) {
+            if (in_array($cand, $allCodes, true)) { $out['pros'] = $cand; break; }
+        }
+        foreach ($consCandidates as $cand) {
+            if (in_array($cand, $allCodes, true)) { $out['cons'] = $cand; break; }
+        }
+        return $cache[$iblockId] = $out;
     }
 
     /**

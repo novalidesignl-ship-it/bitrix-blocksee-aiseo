@@ -286,6 +286,19 @@ class Options
         return self::get('reviews_custom_active_default', 'Y') === 'N' ? 'N' : 'Y';
     }
 
+    /**
+     * Раздельная генерация «достоинства»/«недостатки» как структурированных полей.
+     * Когда включено: AI просят вернуть `{author_name, content, plusses, minuses, rating}`
+     * вместо обычного `{author_name, content, rating}`. CustomBackend пишет
+     * plusses/minuses в свойства инфоблока с подходящими кодами (PLUSSES/PROS,
+     * MINUSES/CONS). Минусы AI делает мизерными — «не заметил», «ничего не
+     * могу сказать», или косвенное наблюдение, без претензий.
+     */
+    public static function getReviewsCustomSplitProsCons(): bool
+    {
+        return self::get('reviews_custom_split_pros_cons', 'N') === 'Y';
+    }
+
     public static function getReviewsBlogUrl(): string
     {
         $url = trim((string)self::get('reviews_blog_url', self::REVIEWS_BLOG_URL_DEFAULT));
