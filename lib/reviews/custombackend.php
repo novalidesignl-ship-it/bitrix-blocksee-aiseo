@@ -186,7 +186,13 @@ class CustomBackend implements Backend
             $contentPropCode = substr($contentTarget, strlen(Options::REVIEWS_CUSTOM_TARGET_PROPERTY_PREFIX));
         }
 
+        // Required-свойства инфоблока отзывов: те, у которых IS_REQUIRED='Y'.
+        // Битрикс их валидирует и без них Add() возвращает false без явной ошибки.
+        // Соберём один раз, потом авто-заполним заглушками то, что AI не отдал.
+        $requiredProps = $this->fetchRequiredProps($cfg['iblock']);
+
         $createdIds = [];
+        $errors = [];
         $cie = new \CIBlockElement();
         foreach ($reviews as $r) {
             $author = TextSanitizer::stripEmoji(trim((string)($r['author_name'] ?? '')));
@@ -212,7 +218,7 @@ class CustomBackend implements Backend
                 $fields['DETAIL_TEXT_TYPE'] = 'text';
             }
 
-            // Properties
+            // Properties: сначала из настроек, потом авто-заглушки
             $propValues = [];
             if ($cfg['rating_prop'] !== '') $propValues[$cfg['rating_prop']] = $rating;
             if ($cfg['author_prop'] !== '') $propValues[$cfg['author_prop']] = $author;
@@ -221,6 +227,10 @@ class CustomBackend implements Backend
                 // на отзыве свойство-связь хранит ID товара
                 $propValues[$cfg['link_prop']] = $elementId;
             }
+
+            // Авто-заглушки для required-свойств, которые мы ещё не заполнили
+            $this->fillRequiredStubs($propValues, $requiredProps, $author, $content, $rating);
+
             if ($propValues) {
                 $fields['PROPERTY_VALUES'] = $propValues;
             }
@@ -228,11 +238,21 @@ class CustomBackend implements Backend
             $newId = $cie->Add($fields);
             if ($newId) {
                 $createdIds[] = (int)$newId;
+            } elseif (!empty($cie->LAST_ERROR) && count($errors) < 3) {
+                // Логируем первые 3 уникальные ошибки — для диагностики, чтобы юзер
+                // не бился вслепую с «Ни один не сохранён».
+                $errors[] = trim((string)$cie->LAST_ERROR);
             }
         }
 
         if (!$createdIds) {
-            return ['success' => false, 'error' => 'Ни один отзыв не сохранён (возможно, пустые тексты)'];
+            $errMsg = 'Ни один отзыв не сохранён';
+            if ($errors) {
+                $errMsg .= ': ' . implode(' | ', array_unique($errors));
+            } else {
+                $errMsg .= ' (возможно, пустые тексты)';
+            }
+            return ['success' => false, 'error' => $errMsg];
         }
 
         // Forward direction: дополняем multiple-свойство товара.
@@ -430,5 +450,75 @@ class CustomBackend implements Backend
         if (isset($cache[$elementId])) return $cache[$elementId];
         $row = \CIBlockElement::GetByID($elementId)->Fetch();
         return $cache[$elementId] = $row ? (int)$row['IBLOCK_ID'] : 0;
+    }
+
+    /**
+     * Кеширует и возвращает required-свойства инфоблока отзывов.
+     * Без этих свойств CIBlockElement::Add() возвращает false с LAST_ERROR
+     * вида «Заполните обязательные поля».
+     *
+     * @return array<string,string> [CODE => PROPERTY_TYPE]
+     */
+    private function fetchRequiredProps(int $iblockId): array
+    {
+        static $cache = [];
+        if (isset($cache[$iblockId])) return $cache[$iblockId];
+        $out = [];
+        if (!Loader::includeModule('iblock')) {
+            return $cache[$iblockId] = $out;
+        }
+        $rs = \Bitrix\Iblock\PropertyTable::getList([
+            'select' => ['CODE', 'PROPERTY_TYPE'],
+            'filter' => ['=IBLOCK_ID' => $iblockId, '=ACTIVE' => 'Y', '=IS_REQUIRED' => 'Y'],
+        ]);
+        while ($p = $rs->fetch()) {
+            $code = (string)$p['CODE'];
+            if ($code !== '') {
+                $out[$code] = (string)$p['PROPERTY_TYPE'];
+            }
+        }
+        return $cache[$iblockId] = $out;
+    }
+
+    /**
+     * Авто-заполнение обязательных свойств заглушками. Семантические шаблоны
+     * по коду свойства (AUTHOR/PLUSSES/MINUSES/LONG/...) — иначе фиксированный «—».
+     * E-свойства не трогаем (их нельзя заполнить произвольно).
+     *
+     * @param array<string,mixed> $propValues  ссылка — модифицируется на месте
+     * @param array<string,string> $requiredProps [CODE => TYPE]
+     */
+    private function fillRequiredStubs(array &$propValues, array $requiredProps, string $author, string $content, int $rating): void
+    {
+        foreach ($requiredProps as $code => $type) {
+            if (isset($propValues[$code])) continue; // уже заполнено
+            if ($type === 'E' || $type === 'F') continue; // E (привязка) / F (файл) — не наши, пропускаем
+            $upper = strtoupper($code);
+            if ($type === 'N') {
+                // Числовое: для RATING-кандидатов кладём оценку, иначе 0
+                if (in_array($upper, ['RATING', 'STARS', 'RATING_VALUE', 'RATE', 'SCORE'], true)) {
+                    $propValues[$code] = $rating;
+                } else {
+                    $propValues[$code] = 0;
+                }
+                continue;
+            }
+            // S (строка) или подобное — семантическая заглушка по коду
+            if (in_array($upper, ['AUTHOR', 'AUTHOR_NAME', 'FIO', 'TITLE', 'NAME', 'USER', 'USER_NAME'], true)) {
+                $propValues[$code] = $author;
+            } elseif (in_array($upper, ['LONG', 'EXPERIENCE', 'PERIOD', 'USAGE_TIME', 'USE_TIME', 'LONG_TIME'], true)) {
+                $propValues[$code] = 'Несколько месяцев';
+            } elseif (in_array($upper, ['PLUSSES', 'PLUSES', 'PROS', 'PLUS', 'ADVANTAGES', 'GOOD'], true)) {
+                $propValues[$code] = '—';
+            } elseif (in_array($upper, ['MINUSES', 'CONS', 'MINUS', 'DISADVANTAGES', 'BAD'], true)) {
+                $propValues[$code] = '—';
+            } elseif (in_array($upper, ['COMMENT', 'CONTENT', 'TEXT', 'BODY', 'MESSAGE', 'REVIEW'], true)) {
+                $propValues[$code] = $content;
+            } else {
+                // Generic: единичный тире-плейсхолдер. Пустая строка не пройдёт
+                // IS_REQUIRED-валидацию Битрикса.
+                $propValues[$code] = '—';
+            }
+        }
     }
 }
