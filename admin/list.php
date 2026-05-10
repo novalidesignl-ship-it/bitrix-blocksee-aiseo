@@ -59,18 +59,26 @@ if ($selectedSectionId > 0) {
     $filter['INCLUDE_SUBSECTIONS'] = 'Y';
 }
 
-// Сценарий «empty_only» — ограничиваем выборку списком ID товаров,
-// у которых ОБА поля DETAIL_TEXT и PREVIEW_TEXT строго пустые/NULL.
-// Без этой явной фильтрации пагинация показывает только случайных пустых,
-// попавших в текущую страницу (ровно столько, сколько их оказалось среди 25
-// первых по NAME ASC) — баг, на который пожаловался пользователь.
-if ($scenarioFilter === 'empty_only' && $selectedIblockId > 0) {
+// Сценарий «empty_only» / «empty_or_short» — ограничиваем выборку списком ID
+// товаров, у которых описание пустое (или суммарная длина DETAIL+PREVIEW < 500).
+// Без явной фильтрации пагинация показывает только случайных подходящих,
+// попавших в текущую страницу (баг видимости).
+// CHAR_LENGTH считает символы (не байты), strip_tags не делается — это лишь
+// быстрый SQL-фильтр для отображения. Точный отбор с очисткой тегов идёт в
+// AJAX-bulk через listNextChunkAction.
+if (($scenarioFilter === 'empty_only' || $scenarioFilter === 'empty_or_short') && $selectedIblockId > 0) {
     $emptyIds = [];
     $conn = \Bitrix\Main\Application::getConnection();
-    $sqlEmpty = "SELECT ID FROM b_iblock_element WHERE IBLOCK_ID = " . (int)$selectedIblockId
-        . " AND ACTIVE='Y'"
-        . " AND (DETAIL_TEXT IS NULL OR DETAIL_TEXT = '')"
-        . " AND (PREVIEW_TEXT IS NULL OR PREVIEW_TEXT = '')";
+    if ($scenarioFilter === 'empty_or_short') {
+        $sqlEmpty = "SELECT ID FROM b_iblock_element WHERE IBLOCK_ID = " . (int)$selectedIblockId
+            . " AND ACTIVE='Y'"
+            . " AND (CHAR_LENGTH(IFNULL(DETAIL_TEXT,'')) + CHAR_LENGTH(IFNULL(PREVIEW_TEXT,''))) < 500";
+    } else {
+        $sqlEmpty = "SELECT ID FROM b_iblock_element WHERE IBLOCK_ID = " . (int)$selectedIblockId
+            . " AND ACTIVE='Y'"
+            . " AND (DETAIL_TEXT IS NULL OR DETAIL_TEXT = '')"
+            . " AND (PREVIEW_TEXT IS NULL OR PREVIEW_TEXT = '')";
+    }
     $rsEmpty = $conn->query($sqlEmpty);
     while ($r = $rsEmpty->fetch()) {
         $emptyIds[] = (int)$r['ID'];
@@ -206,6 +214,7 @@ function bsee_get_sections(int $elementId): string
                 <select name="scenario">
                     <option value="all" <?= $scenarioFilter === 'all' ? 'selected' : '' ?>>Все товары</option>
                     <option value="empty_only" <?= $scenarioFilter === 'empty_only' ? 'selected' : '' ?>>Только без описания</option>
+                    <option value="empty_or_short" <?= $scenarioFilter === 'empty_or_short' ? 'selected' : '' ?>>Без описания + короткие (до 500 симв.)</option>
                 </select>
             </label>
             <label class="bsee-field bsee-field-search">
@@ -428,6 +437,11 @@ function bsee_get_sections(int $elementId): string
                             <div class="bsee-scenario-title">Заполнить только пустые</div>
                             <div class="bsee-scenario-desc">Генерирует описания только для товаров, у которых описание отсутствует. Существующие не трогает.</div>
                             <div class="bsee-scenario-badge">Безопасно</div>
+                        </div>
+                        <div class="bsee-scenario-option" data-scenario="empty_or_short">
+                            <div class="bsee-scenario-title">Заполнить пустые и переписать короткие</div>
+                            <div class="bsee-scenario-desc">Обрабатывает товары без описания и те, у которых суммарная длина DETAIL+PREVIEW меньше 500 символов. Длинные описания не трогает.</div>
+                            <div class="bsee-scenario-badge">До 500 симв.</div>
                         </div>
                         <div class="bsee-scenario-option" data-scenario="overwrite_all">
                             <div class="bsee-scenario-title">Перезаписать все</div>

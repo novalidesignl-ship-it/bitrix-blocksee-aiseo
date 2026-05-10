@@ -11,6 +11,12 @@ use Blocksee\Aiseo\Options;
 
 class Generator extends Controller
 {
+    /**
+     * Порог «короткое описание» (в символах) для сценария empty_or_short.
+     * Считается по DETAIL_TEXT + PREVIEW_TEXT (после strip_tags + trim).
+     */
+    private const SHORT_DESC_THRESHOLD = 500;
+
     protected function getDefaultPreFilters(): array
     {
         return [
@@ -334,9 +340,14 @@ class Generator extends Controller
 
         $items = [];
         while ($row = $rs->GetNext(true, false)) {
-            $hasDesc = trim(strip_tags((string)$row['DETAIL_TEXT'])) !== ''
-                || trim(strip_tags((string)$row['PREVIEW_TEXT'])) !== '';
+            $detailLen  = mb_strlen(trim(strip_tags((string)$row['DETAIL_TEXT'])), 'UTF-8');
+            $previewLen = mb_strlen(trim(strip_tags((string)$row['PREVIEW_TEXT'])), 'UTF-8');
+            $totalLen   = $detailLen + $previewLen;
+            $hasDesc    = $totalLen > 0;
             if ($scenario === 'empty_only' && $hasDesc) {
+                continue;
+            }
+            if ($scenario === 'empty_or_short' && $totalLen >= self::SHORT_DESC_THRESHOLD) {
                 continue;
             }
             $items[] = [
@@ -399,8 +410,8 @@ class Generator extends Controller
 
         $totalCount = null;
         if ($includeTotal === 'Y') {
-            if ($scenario === 'empty_only') {
-                $totalCount = $this->countEmptyElements($iblockId, $search, $sectionIdsArr);
+            if ($scenario === 'empty_only' || $scenario === 'empty_or_short') {
+                $totalCount = $this->countEmptyElements($iblockId, $search, $sectionIdsArr, $scenario);
             } else {
                 $totalCount = (int)\CIBlockElement::GetList(
                     [],
@@ -432,10 +443,11 @@ class Generator extends Controller
         while ($row = $rs->Fetch()) {
             $fetched++;
             $lastId = (int)$row['ID'];
-            if ($scenario === 'empty_only') {
-                $hasDesc = trim(strip_tags((string)$row['DETAIL_TEXT'])) !== ''
-                    || trim(strip_tags((string)$row['PREVIEW_TEXT'])) !== '';
-                if ($hasDesc) {
+            if ($scenario === 'empty_only' || $scenario === 'empty_or_short') {
+                $totalLen = mb_strlen(trim(strip_tags((string)$row['DETAIL_TEXT'])), 'UTF-8')
+                          + mb_strlen(trim(strip_tags((string)$row['PREVIEW_TEXT'])), 'UTF-8');
+                $threshold = $scenario === 'empty_only' ? 1 : self::SHORT_DESC_THRESHOLD;
+                if ($totalLen >= $threshold) {
                     continue;
                 }
             }
@@ -455,7 +467,7 @@ class Generator extends Controller
         return $result;
     }
 
-    private function countEmptyElements(int $iblockId, string $search, array $sectionIds = []): int
+    private function countEmptyElements(int $iblockId, string $search, array $sectionIds = [], string $scenario = 'empty_only'): int
     {
         $filter = ['ACTIVE' => 'Y', 'IBLOCK_ID' => $iblockId];
         if ($search !== '') {
@@ -465,7 +477,7 @@ class Generator extends Controller
             $filter['SECTION_ID'] = $sectionIds;
             $filter['INCLUDE_SUBSECTIONS'] = 'Y';
         }
-        // Iterate once to count empties — done only at start of a bulk job
+        // Iterate once to count matches — done only at start of a bulk job
         $rs = \CIBlockElement::GetList(
             ['ID' => 'ASC'],
             $filter,
@@ -473,11 +485,12 @@ class Generator extends Controller
             false,
             ['ID', 'DETAIL_TEXT', 'PREVIEW_TEXT']
         );
+        $threshold = $scenario === 'empty_or_short' ? self::SHORT_DESC_THRESHOLD : 1;
         $count = 0;
         while ($row = $rs->Fetch()) {
-            $hasDesc = trim(strip_tags((string)$row['DETAIL_TEXT'])) !== ''
-                || trim(strip_tags((string)$row['PREVIEW_TEXT'])) !== '';
-            if (!$hasDesc) $count++;
+            $totalLen = mb_strlen(trim(strip_tags((string)$row['DETAIL_TEXT'])), 'UTF-8')
+                      + mb_strlen(trim(strip_tags((string)$row['PREVIEW_TEXT'])), 'UTF-8');
+            if ($totalLen < $threshold) $count++;
         }
         return $count;
     }

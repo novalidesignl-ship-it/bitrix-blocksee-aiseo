@@ -344,7 +344,11 @@
         qsa('.bsee-scenario-option', modal).forEach(opt => {
             opt.addEventListener('click', async () => {
                 const scenario = opt.dataset.scenario;
-                const scenarioLabel = scenario === 'empty_only' ? 'Заполнить пустые' : 'Перезаписать все';
+                const scenarioLabel = ({
+                    empty_only:    'Заполнить пустые',
+                    empty_or_short:'Заполнить пустые и переписать короткие',
+                    overwrite_all: 'Перезаписать все',
+                })[scenario] || scenario;
                 modal.style.display = 'none';
 
                 const url = new URL(window.location.href);
