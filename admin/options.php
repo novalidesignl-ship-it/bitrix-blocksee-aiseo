@@ -31,6 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_bitrix_sessid()) {
         Options::set('target_property_code', trim((string)($_POST['target_property_code'] ?? '')));
         Options::set('iblock_id', (int)($_POST['iblock_id'] ?? 0));
         Options::set('custom_prompt', (string)($_POST['custom_prompt'] ?? ''));
+        $skipCodes = preg_split('/[\s,;]+/u', (string)($_POST['skip_property_codes'] ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+        Options::set('skip_property_codes', implode(', ', array_values(array_unique($skipCodes ?: []))));
         Options::set('temperature', (string)($_POST['temperature'] ?? '0.7'));
         Options::set('max_tokens', (string)($_POST['max_tokens'] ?? '3000'));
         Options::set('creative_mode', isset($_POST['creative_mode']) ? 'Y' : 'N');
@@ -96,6 +98,7 @@ $targetField = Options::getTargetField();
 $targetPropertyCode = Options::getTargetPropertyCode();
 $iblockId = Options::getIblockId();
 $customPrompt = Options::getCustomPrompt();
+$skipPropertyCodes = implode(', ', Options::getCustomSkipPropertyCodes());
 $settings = Options::getGenerationSettings();
 
 // Reviews state
@@ -428,6 +431,16 @@ $APPLICATION->SetAdditionalCSS(Options::getAssetUrl('/assets/admin.css'));
                     <label>Кастомный промпт (пусто = стандартный на сервере):<br>
                         <textarea name="custom_prompt" rows="8" cols="80"><?= htmlspecialcharsbx($customPrompt) ?></textarea>
                     </label>
+                </p>
+                <p>
+                    <label>Не передавать в ИИ свойства (коды через запятую):<br>
+                        <textarea name="skip_property_codes" rows="3" cols="80" placeholder="Например: VYGRUZHAT_NA_SAYT, SALE, HIT"><?= htmlspecialcharsbx($skipPropertyCodes) ?></textarea>
+                    </label>
+                    <br><small>
+                        Служебные свойства, которые модель может принять за характеристики товара. Всегда исключаются и без этого списка:
+                        <code><?= htmlspecialcharsbx(implode(', ', Options::SKIP_PROPERTY_CODES_BUILTIN)) ?></code>,
+                        а также привязки к другим товарам этого же каталога («С этим товаром покупают», «Похожие товары»).
+                    </small>
                 </p>
             </fieldset>
         </div>

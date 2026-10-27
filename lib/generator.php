@@ -109,7 +109,7 @@ class Generator
 
     /**
      * Сохраняет оригинал поля в таблицу бэкапов перед перезаписью.
-     * Если ORIGINAL пуст — ничего не сохраняет (BackupStorage::save сам это проверяет).
+     * Пустой оригинал тоже сохраняется: откат такого товара очищает поле.
      */
     private function backupBeforeWrite(int $elementId, int $iblockId, string $field, ?string $newValue, ?string $originalValue = null): void
     {
@@ -248,9 +248,19 @@ class Generator
     private function getElementProperties(int $elementId, int $iblockId): array
     {
         $attributes = [];
+        $skipCodes = array_flip(Options::getSkipPropertyCodes());
         $rs = \CIBlockElement::GetProperty($iblockId, $elementId, ['sort' => 'asc'], ['ACTIVE' => 'Y']);
         while ($prop = $rs->Fetch()) {
             if (empty($prop['NAME']) || $prop['VALUE'] === null || $prop['VALUE'] === '' || $prop['VALUE'] === false) {
+                continue;
+            }
+            // Служебные свойства (1С-реквизиты, голосование, коды из настроек) в ИИ не отдаём.
+            if (isset($skipCodes[strtoupper((string)$prop['CODE'])])) {
+                continue;
+            }
+            // Привязки к товарам этого же каталога («С этим товаром покупают», «Похожие»):
+            // в данные ушли бы названия чужих товаров, и модель приписывала их этому.
+            if (($prop['PROPERTY_TYPE'] ?? '') === 'E' && (int)($prop['LINK_IBLOCK_ID'] ?? 0) === $iblockId) {
                 continue;
             }
             $propName = (string)$prop['NAME'];
