@@ -22,12 +22,10 @@ class ApiClient
     public function generateProductDescription(array $productData, string $customPrompt = '', array $settings = []): array
     {
         $payload = [
-            // Битрикс-специфичный action: серверный case
-            // 'generate_product_description_bitrix' имеет hardcoded chain
-            // [DS Pro, DS Flash, Sonnet 4.6] независимо от общей
-            // bsee_models_chain_for_quality(), которой пользуется WP-плагин.
-            // Sonnet — страховка на случай SSN content-filter / залипания
-            // DeepSeek-провайдера.
+            // Битрикс-специфичный action, модель выбирает сервер. С 27.10.2026
+            // 'generate_product_description_bitrix' отвечает только прямым
+            // DeepSeek V4 Flash (api.deepseek.com) без запасных моделей: если
+            // Flash не ответил, сервер вернёт success=false с причиной.
             'action' => 'generate_product_description_bitrix',
             'product_data' => $productData,
             'custom_prompt' => $customPrompt,
@@ -39,9 +37,7 @@ class ApiClient
             ],
         ];
 
-        // Таймаут 180s. Серверная chain Sonnet 4.6 → DS Pro → DS Flash может
-        // последовательно прогнать 3 модели с 60s timeout каждая (если первые
-        // отвечают пустым content). 90s нам не хватало.
+        // Таймаут 180s с запасом: сервер делает до двух попыток DS Flash по 45s.
         $client = new HttpClient([
             'socketTimeout' => 180,
             'streamTimeout' => 180,

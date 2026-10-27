@@ -66,9 +66,11 @@ class BackupStorage
         ?int $userId = null
     ): void {
         if ($elementId <= 0) return;
-        // Не сохраняем, если оригинал реально пустой — нечего бэкапить
-        if ($originalValue === null || trim((string)$originalValue) === '') {
-            return;
+        // Пустой оригинал тоже сохраняем: у каталогов, где описания не было
+        // (а таких товаров большинство), иначе нечем откатить генерацию —
+        // откат вернёт поле в пустое состояние.
+        if ($originalValue === null) {
+            $originalValue = '';
         }
 
         // Lazy create: на проде модуль уже установлен и DoInstall() заново не запускается.

@@ -21,6 +21,17 @@ class Options
     public const REVIEWS_CUSTOM_TARGET_PREVIEW = 'PREVIEW_TEXT';
     public const REVIEWS_CUSTOM_TARGET_PROPERTY_PREFIX = 'PROPERTY:';
 
+    /**
+     * Свойства, которые никогда не уходят в ИИ: служебные поля обмена с 1С
+     * (реквизиты, налоги, единица, штрихкод, артикул) и счётчики голосования/отзывов.
+     * Модель принимала их за характеристики товара («рейтинг 3.4», «без НДС»).
+     */
+    public const SKIP_PROPERTY_CODES_BUILTIN = [
+        'CML2_TRAITS', 'CML2_TAXES', 'CML2_BASE_UNIT', 'CML2_BAR_CODE', 'CML2_ARTICLE',
+        'VOTE_COUNT', 'VOTE_SUM', 'RATING',
+        'FORUM_TOPIC_ID', 'FORUM_MESSAGE_CNT', 'BLOG_POST_ID', 'BLOG_COMMENTS_CNT',
+    ];
+
     public static function get(string $key, $default = '')
     {
         return Option::get(self::MODULE_ID, $key, $default);
@@ -55,6 +66,31 @@ class Options
     public static function getCustomPrompt(): string
     {
         return (string)self::get('custom_prompt', '');
+    }
+
+    /**
+     * Коды свойств, которые задал админ в настройках (через запятую, пробел или
+     * с новой строки), — как ввели, без встроенного списка.
+     *
+     * @return string[]
+     */
+    public static function getCustomSkipPropertyCodes(): array
+    {
+        $raw = (string)self::get('skip_property_codes', '');
+        $codes = preg_split('/[\s,;]+/u', $raw, -1, PREG_SPLIT_NO_EMPTY);
+        return array_values(array_unique($codes ?: []));
+    }
+
+    /**
+     * Все коды свойств, которые не передаются в ИИ: встроенные служебные + из настроек.
+     * В верхнем регистре — сравнивать с strtoupper(CODE).
+     *
+     * @return string[]
+     */
+    public static function getSkipPropertyCodes(): array
+    {
+        $codes = array_map('strtoupper', array_merge(self::SKIP_PROPERTY_CODES_BUILTIN, self::getCustomSkipPropertyCodes()));
+        return array_values(array_unique($codes));
     }
 
     public static function getGenerationSettings(): array
